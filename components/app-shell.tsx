@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Library } from "@/components/library";
 
 export function AppShell() {
   return (
@@ -24,17 +18,7 @@ export function AppShell() {
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-6 py-10">
-        <Card data-testid="library-empty">
-          <CardHeader>
-            <CardTitle>还没有文档</CardTitle>
-            <CardDescription>
-              导入 PDF 或 EPUB 后，可以在这里阅读、摘录，并回到原文。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">文库是空的。</p>
-          </CardContent>
-        </Card>
+        <Library />
       </main>
     </div>
   );

@@ -4,7 +4,9 @@ import path from "node:path";
 const DEFAULT_MAX_UPLOAD_BYTES = 32 * 1024 * 1024;
 
 export function getUploadsDir(): string {
-  return process.env.READ_UPLOADS_DIR ?? path.join(process.cwd(), "uploads");
+  const override = process.env.READ_UPLOADS_DIR;
+  if (override) return path.resolve(/*turbopackIgnore: true*/ override);
+  return path.join(process.cwd(), "uploads");
 }
 
 export function maxUploadBytes(): number {
@@ -19,8 +21,8 @@ export function resolveUploadPath(storageKey: string): string {
   if (!storageKey || path.isAbsolute(storageKey) || storageKey.includes("\0")) {
     throw new Error("invalid storage key");
   }
-  const root = path.resolve(getUploadsDir());
-  const target = path.resolve(root, storageKey);
+  const root = path.resolve(/*turbopackIgnore: true*/ getUploadsDir());
+  const target = path.resolve(/*turbopackIgnore: true*/ root, storageKey);
   if (target !== root && !target.startsWith(`${root}${path.sep}`)) {
     throw new Error("invalid storage key");
   }

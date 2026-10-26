@@ -26,6 +26,13 @@
 /.next/
 /out/
 
+# generated pdf.js assets
+/public/pdf.worker.min.mjs
+/public/standard_fonts/
+
+# e2e server state
+/e2e-runtime/
+
 # production
 /build
 
