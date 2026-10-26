@@ -57,6 +57,13 @@ export function Library() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap gap-3">
+        <Link
+          data-testid="open-mind-map"
+          className="inline-flex items-center rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+          href="/map"
+        >
+          脑图
+        </Link>
         <label className="inline-flex cursor-pointer items-center rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">
           导入 PDF
           <input

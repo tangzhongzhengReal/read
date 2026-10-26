@@ -22,3 +22,9 @@ test("library can upload an epub", () => {
   expect(screen.getByTestId("upload-epub")).toBeDefined();
   expect(screen.getByText("导入 EPUB")).toBeDefined();
 });
+
+test("library links to the workspace mind map", () => {
+  render(<Home />);
+
+  expect(screen.getByTestId("open-mind-map").getAttribute("href")).toBe("/map");
+});

@@ -19,6 +19,12 @@ npm run e2e
 
 JSONL 默认写到 `./data`，PDF 和 EPUB 默认写到 `./uploads`。可以用 `READ_DATA_DIR` 和 `READ_UPLOADS_DIR` 改目录。测试使用临时目录。
 
+脑图在 `/map`。笔记、摘录和代码节点以及连线都追加到 `data/<workspaceId>/nodes.jsonl` 和 `edges.jsonl`。
+
+代码节点在短命 Docker 容器里运行（`--network=none`、只读根文件系统、丢弃全部 capabilities），不会在 Next.js 进程里执行用户源码。语言是 javascript、python 和 go。状态从 `queued` 到 `running`，再落到 `succeeded`、`failed` 或 `timed_out`，记录在 `code-runs.jsonl`。
+
+没有 Docker daemon 时，状态机、参数和 API 单测仍然运行；真正启动容器的集成测试和 Playwright 用例会跳过。设置 `READ_DOCKER_TESTS=0` 可以强制跳过。本机有 Docker 时，`npm test` 和 `npm run e2e` 会拉起 `node:22-alpine`、`python:3.12-alpine` 和 `golang:1.23-alpine`。GitHub Actions 的 ubuntu runner 自带 Docker 时同样会跑这些用例；daemon 不可用时跳过，不把主检查标红。
+
 ## Production
 
 服务器需要：

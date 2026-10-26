@@ -53,8 +53,9 @@ export const EdgeSchema = z.object({
 
 export const CodeRunSchema = z.object({
   id: z.string().min(1),
+  workspaceId: z.string().min(1).optional(),
   nodeId: z.string().min(1),
-  status: z.enum(["queued", "running", "succeeded", "failed"]),
+  status: z.enum(["queued", "running", "succeeded", "failed", "timed_out"]),
   language: z.enum(["javascript", "python", "go"]),
   source: z.string(),
   stdin: z.string().optional(),
@@ -102,9 +103,94 @@ export const DocumentCreateSchema = DocumentSchema.omit({
   deleted: true,
 });
 
+export const positionSchema = z.object({
+  x: z.number().finite(),
+  y: z.number().finite(),
+});
+
+export const NoteCreateSchema = z.object({
+  workspaceId: z.string().min(1),
+  type: z.literal("note"),
+  payload: z.object({
+    text: z.string().trim().min(1),
+  }),
+  position: positionSchema.optional(),
+});
+
+export const CodeNodeCreateSchema = z.object({
+  workspaceId: z.string().min(1),
+  type: z.literal("code"),
+  payload: z.object({
+    language: z.enum(["javascript", "python", "go"]),
+    source: z.string().max(20_000),
+  }),
+  position: positionSchema.optional(),
+});
+
+export const NodeCreateSchema = z.discriminatedUnion("type", [
+  ExcerptCreateSchema,
+  NoteCreateSchema,
+  CodeNodeCreateSchema,
+]);
+
+export const NodeUpdateSchema = z
+  .object({
+    workspaceId: z.string().min(1),
+    position: positionSchema.optional(),
+    payload: z.record(z.string(), z.unknown()).optional(),
+  })
+  .refine((value) => value.position !== undefined || value.payload !== undefined, {
+    message: "empty patch",
+  });
+
+export const EdgeCreateSchema = z.object({
+  workspaceId: z.string().min(1),
+  fromNodeId: z.string().min(1),
+  toNodeId: z.string().min(1),
+  kind: z.string().trim().min(1).max(80).optional(),
+});
+
+export const EdgeUpdateSchema = z
+  .object({
+    workspaceId: z.string().min(1),
+    kind: z.string().trim().min(1).max(80).optional(),
+    fromNodeId: z.string().min(1).optional(),
+    toNodeId: z.string().min(1).optional(),
+  })
+  .refine(
+    (value) =>
+      value.kind !== undefined ||
+      value.fromNodeId !== undefined ||
+      value.toNodeId !== undefined,
+    { message: "empty patch" },
+  );
+
+export const CodeRunCreateSchema = z.object({
+  workspaceId: z.string().min(1),
+  nodeId: z.string().min(1),
+  language: z.enum(["javascript", "python", "go"]).optional(),
+  source: z.string().max(20_000).optional(),
+  stdin: z.string().max(10_000).optional(),
+});
+
+export const notePayloadSchema = z.object({
+  text: z.string().trim().min(1),
+});
+
+export const codePayloadSchema = z.object({
+  language: z.enum(["javascript", "python", "go"]),
+  source: z.string().max(20_000),
+});
+
+export const excerptPayloadSchema = z.object({
+  text: z.string().trim().min(1),
+});
+
 export type Workspace = z.infer<typeof WorkspaceSchema>;
 export type DocumentCreate = z.infer<typeof DocumentCreateSchema>;
 export type Document = z.infer<typeof DocumentSchema>;
 export type Node = z.infer<typeof NodeSchema>;
 export type Edge = z.infer<typeof EdgeSchema>;
 export type CodeRun = z.infer<typeof CodeRunSchema>;
+export type CodeRunStatus = CodeRun["status"];
+export type CodeLanguage = CodeRun["language"];

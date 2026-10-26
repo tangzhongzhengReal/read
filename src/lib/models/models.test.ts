@@ -103,3 +103,20 @@ test("edge and code run accept their stored shapes", () => {
     }).success,
   ).toBe(false);
 });
+
+test("code run accepts timed_out and an optional workspace id", () => {
+  expect(
+    CodeRunSchema.parse({
+      id: "r",
+      workspaceId: "ws",
+      nodeId: "n",
+      status: "timed_out",
+      language: "javascript",
+      source: "console.log(1)",
+      stdout: "",
+      stderr: "killed",
+      createdAt: now,
+      updatedAt: now,
+    }),
+  ).toMatchObject({ status: "timed_out", workspaceId: "ws" });
+});
