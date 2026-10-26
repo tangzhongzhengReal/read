@@ -80,6 +80,65 @@ test("a selection payload is stored as an excerpt and can be filtered by documen
   expect(raw).toContain('"page":2');
 });
 
+test("a cfi selection is stored as an excerpt and can be filtered by document", async () => {
+  const cfi = "epubcfi(/6/4!/4/2,/1:0,/1:12)";
+  const created = await POST(
+    excerptRequest({
+      workspaceId: "ws-1",
+      documentId: "doc-epub",
+      type: "excerpt",
+      payload: { text: "EPUBTOKEN" },
+      anchor: { cfi },
+    }),
+  );
+  expect(created.status).toBe(201);
+  const createdBody = (await created.json()) as {
+    node: {
+      id: string;
+      type: string;
+      documentId: string;
+      payload: { text: string };
+      anchor: { cfi?: string; page?: number };
+    };
+  };
+  expect(createdBody.node.type).toBe("excerpt");
+  expect(createdBody.node.documentId).toBe("doc-epub");
+  expect(createdBody.node.payload.text).toBe("EPUBTOKEN");
+  expect(createdBody.node.anchor.cfi).toBe(cfi);
+  expect(createdBody.node.anchor.page).toBeUndefined();
+
+  const other = await POST(excerptRequest(excerpt));
+  expect(other.status).toBe(201);
+
+  const listed = await GET(
+    new NextRequest("http://localhost/api/nodes?workspaceId=ws-1&documentId=doc-epub"),
+  );
+  expect(listed.status).toBe(200);
+  const listedBody = (await listed.json()) as {
+    nodes: Array<{ documentId: string; payload: { text: string }; anchor: { cfi: string } }>;
+  };
+  expect(listedBody.nodes.map((node) => node.payload.text)).toEqual(["EPUBTOKEN"]);
+  expect(listedBody.nodes[0]?.anchor.cfi).toBe(cfi);
+
+  const raw = await readFile(path.join(dataDir, "ws-1", "nodes.jsonl"), "utf8");
+  expect(raw).toContain('"type":"excerpt"');
+  expect(raw).toContain("EPUBTOKEN");
+  expect(raw).toContain(cfi);
+});
+
+test("an excerpt whose anchor is not a cfi or a page rectangle is rejected", async () => {
+  const response = await POST(
+    excerptRequest({
+      workspaceId: "ws-1",
+      documentId: "doc-epub",
+      type: "excerpt",
+      payload: { text: "no place" },
+      anchor: { cfi: "chapter-3" },
+    }),
+  );
+  expect(response.status).toBe(400);
+});
+
 test("an excerpt without a page and rectangle anchor is rejected", async () => {
   const response = await POST(
     excerptRequest({
