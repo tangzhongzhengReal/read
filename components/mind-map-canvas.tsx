@@ -90,6 +90,28 @@ function CodeNode({ id, data }: NodeProps<MindNode>) {
   const [stderr, setStderr] = useState("");
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch(
+      `/api/code-runs?workspaceId=${encodeURIComponent(workspaceId)}&nodeId=${encodeURIComponent(id)}`,
+    )
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = (await response.json()) as {
+          runs: Array<{ status: string; stdout?: string; stderr?: string }>;
+        };
+        const latest = body.runs.at(-1);
+        if (!latest || cancelled) return;
+        setStatus(latest.status);
+        setStdout(latest.stdout ?? "");
+        setStderr(latest.stderr ?? "");
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [id, workspaceId]);
+
   async function run() {
     setBusy(true);
     setStatus("running");

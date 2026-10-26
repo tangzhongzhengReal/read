@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Book, Rendition } from "epubjs";
 import { Button } from "@/components/ui/button";
+import { libraryPath, mapPath, reviewPath } from "@/src/lib/workspace";
 
 type EpubExcerpt = {
   id: string;
@@ -174,9 +175,17 @@ export function EpubReader({
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-6 py-4">
           <div>
-            <Link className="text-xs text-muted-foreground underline" href="/">
-              返回文库
-            </Link>
+            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              <Link className="underline" href={libraryPath(workspaceId)}>
+                返回文库
+              </Link>
+              <Link data-testid="open-mind-map" className="underline" href={mapPath(workspaceId)}>
+                脑图
+              </Link>
+              <Link data-testid="open-review" className="underline" href={reviewPath(workspaceId)}>
+                复习
+              </Link>
+            </div>
             <h1 className="text-xl font-semibold" data-testid="reader-title">
               {title}
             </h1>
