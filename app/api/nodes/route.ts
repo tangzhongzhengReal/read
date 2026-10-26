@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
-import { ExcerptCreateSchema, NodeSchema } from "@/src/lib/models";
+import { NodeCreateSchema, NodeSchema } from "@/src/lib/models";
 import { assertWorkspaceId } from "@/src/lib/store/documents";
 import { getNodeStore } from "@/src/lib/store/nodes";
 
@@ -33,19 +33,25 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "invalid json" }, { status: 400 });
   }
 
-  const parsed = ExcerptCreateSchema.safeParse(body);
+  const parsed = NodeCreateSchema.safeParse(body);
   if (!parsed.success) {
-    return Response.json({ error: "invalid excerpt" }, { status: 400 });
+    return Response.json(
+      { error: excerptAttempt(body) ? "invalid excerpt" : "invalid node" },
+      { status: 400 },
+    );
   }
 
   const now = new Date().toISOString();
+  const data = parsed.data;
   const node = NodeSchema.parse({
     id: randomUUID(),
-    workspaceId: parsed.data.workspaceId,
-    documentId: parsed.data.documentId,
-    type: "excerpt",
-    payload: parsed.data.payload,
-    anchor: parsed.data.anchor,
+    workspaceId: data.workspaceId,
+    ...(data.type === "excerpt"
+      ? { documentId: data.documentId, anchor: data.anchor }
+      : {}),
+    type: data.type,
+    payload: data.payload,
+    ...("position" in data && data.position ? { position: data.position } : {}),
     createdAt: now,
     updatedAt: now,
   });
@@ -57,6 +63,11 @@ export async function POST(request: NextRequest) {
   }
 
   return Response.json({ node }, { status: 201 });
+}
+
+function excerptAttempt(body: unknown): boolean {
+  if (!body || typeof body !== "object" || !("type" in body)) return true;
+  return (body as { type?: unknown }).type === "excerpt";
 }
 
 function invalidWorkspace(error: unknown): Response {
