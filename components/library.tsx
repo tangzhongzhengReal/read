@@ -104,7 +104,7 @@ export function Library() {
         </p>
       </div>
       <form
-        className="flex flex-wrap items-center gap-2"
+        className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
         onSubmit={(event) => {
           event.preventDefault();
           void createWorkspace();
@@ -112,7 +112,7 @@ export function Library() {
       >
         <input
           data-testid="workspace-name"
-          className="min-w-40 rounded-lg border border-border bg-background px-3 py-2 text-sm"
+          className="min-h-11 w-full rounded-lg border border-border bg-background px-3 text-base sm:w-auto sm:min-w-40 sm:text-sm"
           value={draftName}
           placeholder="工作区名称"
           onChange={(event) => setDraftName(event.target.value)}
@@ -120,7 +120,7 @@ export function Library() {
         <button
           type="submit"
           data-testid="create-workspace"
-          className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-3 text-sm font-medium"
         >
           新建工作区
         </button>
@@ -143,19 +143,19 @@ export function Library() {
       <div className="flex flex-wrap gap-3">
         <Link
           data-testid="open-mind-map"
-          className="inline-flex items-center rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+          className="inline-flex min-h-11 items-center rounded-lg border border-border bg-background px-3 text-sm font-medium"
           href={mapPath(workspaceId)}
         >
           脑图
         </Link>
         <Link
           data-testid="open-review"
-          className="inline-flex items-center rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+          className="inline-flex min-h-11 items-center rounded-lg border border-border bg-background px-3 text-sm font-medium"
           href={reviewPath(workspaceId)}
         >
           复习
         </Link>
-        <label className="inline-flex cursor-pointer items-center rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">
+        <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground">
           导入 PDF
           <input
             data-testid="upload-pdf"
@@ -169,7 +169,7 @@ export function Library() {
             }}
           />
         </label>
-        <label className="inline-flex cursor-pointer items-center rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">
+        <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground">
           导入 EPUB
           <input
             data-testid="upload-epub"
@@ -207,7 +207,7 @@ export function Library() {
             <li key={document.id}>
               <Link
                 data-testid="document-card"
-                className="block rounded-xl bg-card px-4 py-3 text-sm ring-1 ring-foreground/10"
+                className="block min-h-11 rounded-xl bg-card px-4 py-3 text-sm break-words ring-1 ring-foreground/10"
                 href={readerPath(document.id, document.workspaceId)}
               >
                 {document.title}

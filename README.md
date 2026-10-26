@@ -27,11 +27,14 @@ JSONL 默认写到 `./data`，PDF 和 EPUB 默认写到 `./uploads`。可以用 
 
 ## 使用
 
-1. 打开首页。默认工作区是 `local`。也可以填写名称后点「新建工作区」，记录写在 `data/workspaces.jsonl`。
-2. 导入 PDF 或 EPUB，选中文字后做成摘录。
-3. 打开 `/map`，把摘录和笔记连起来。代码节点可以跑 javascript、python 或 go。
-4. 打开 `/review`。摘录和笔记可以加入今日复习；勾选后记下下次复习日期，间隔从 1 天起加倍，最长 32 天。这不是 Anki。
-5. 刷新后，文档、摘录、连线、代码输出和复习勾选都还在对应的 JSONL 里。
+1. 打开 `/login`，输入访问令牌。未设置 `READ_AUTH_TOKEN` 时，令牌是 `marctang33`。登录成功后浏览器只保存 HttpOnly 会话 cookie，不会把令牌放进 localStorage。页面未登录会跳到 `/login`，`/api/*` 返回 401。点「退出」会清掉会话。
+2. 打开首页。默认工作区是 `local`。也可以填写名称后点「新建工作区」，记录写在 `data/workspaces.jsonl`。
+3. 导入 PDF 或 EPUB，选中文字后做成摘录。EPUB 会先准备阅读器、再下载并显示进度，然后解析和排版。
+4. 打开 `/map`，把摘录和笔记连起来。代码节点可以跑 javascript、python 或 go。窄屏上可以单指平移、双指缩放。
+5. 打开 `/review`。摘录和笔记可以加入今日复习；勾选后记下下次复习日期，间隔从 1 天起加倍，最长 32 天。这不是 Anki。
+6. 刷新后，文档、摘录、连线、代码输出和复习勾选都还在对应的 JSONL 里。
+
+界面使用系统字体（苹方、思源黑体、微软雅黑等），不从境外字体或脚本 CDN 拉资源。PDF.js worker 和标准字体继续放在本站 `/pdf.worker.min.mjs` 和 `/standard_fonts/`。
 
 ## Production
 
@@ -59,7 +62,10 @@ PORT=3210
 HOSTNAME=127.0.0.1
 READ_DATA_DIR=/var/lib/read/data
 READ_UPLOADS_DIR=/var/lib/read/uploads
+READ_AUTH_TOKEN=marctang33
 ```
+
+`READ_AUTH_TOKEN` 写在 `deploy/read.service` 里，部署脚本会把它装进 systemd。这台 solo 服务器的值是 `marctang33`。若要更换，改单元文件后 `systemctl restart read.service`。环境变量未设置时，服务仍接受 `marctang33`，避免漏配环境变量就登不进去。
 
 nginx 的 `location /` 需要反代到 `http://127.0.0.1:3210`，并允许较大的上传（`client_max_body_size 32m`）。部署脚本会备份并改写已经包含 `read.coming.js.cn` 的站点文件，去掉 `root /var/www/read` 静态配置。`nginx -t` 失败时会还原。`/var/www/read` 里的旧静态文件会留在磁盘上，但不再被 nginx 直接提供。
 
@@ -69,7 +75,12 @@ nginx 的 `location /` 需要反代到 `http://127.0.0.1:3210`，并允许较大
 
 ```bash
 systemctl status read.service
-curl -fsS http://127.0.0.1:3210/api/documents?workspaceId=local
+curl -fsS http://127.0.0.1:3210/login
+curl -fsS -c /tmp/read.cookies -H 'content-type: application/json' \
+  -d '{"token":"marctang33"}' \
+  http://127.0.0.1:3210/api/auth/login
+curl -fsS -b /tmp/read.cookies \
+  'http://127.0.0.1:3210/api/documents?workspaceId=local'
 ```
 
 不使用 pm2。进程由 systemd 拉起并在失败后重启。

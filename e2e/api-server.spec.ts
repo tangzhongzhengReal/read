@@ -1,7 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { authToken } from "./auth-token";
 import { buildTextPdf, SAMPLE_PAGE_ONE } from "../src/lib/pdf/text-pdf";
 
 test("the standalone server serves the pdf upload API", async ({ request }) => {
+  const login = await request.post("/api/auth/login", { data: { token: authToken } });
+  expect(login.status()).toBe(200);
+
   const bytes = Buffer.from(buildTextPdf([SAMPLE_PAGE_ONE]));
   const created = await request.post("/api/documents/upload", {
     multipart: {

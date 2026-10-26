@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { LogoutButton } from "@/components/logout-button";
 import { Button } from "@/components/ui/button";
+import { pdfFitScale } from "@/src/lib/pdf/fit-scale";
 import { normalizeSelectionAnchor } from "@/src/lib/pdf/selection-anchor";
 import { libraryPath, LOCAL_WORKSPACE_ID, mapPath, reviewPath } from "@/src/lib/workspace";
 
@@ -16,9 +18,6 @@ type ExcerptNode = {
     rects: Array<{ x: number; y: number; width: number; height: number }>;
   };
 };
-
-const PDF_TO_CSS_UNITS = 96 / 72;
-const USER_SCALE = 1;
 
 export function PdfReader() {
   const params = useSearchParams();
@@ -46,9 +45,11 @@ function PdfDocument({
   documentId: string;
   workspaceId: string;
 }) {
+  const frameRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
+  const [frameWidth, setFrameWidth] = useState(0);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [title, setTitle] = useState("PDF");
   const [pageNumber, setPageNumber] = useState(1);
@@ -122,10 +123,21 @@ function PdfDocument({
   }, [documentId, workspaceId]);
 
   useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const measure = () => setFrameWidth(frame.clientWidth);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [pdf]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     const textLayer = textLayerRef.current;
     const pageElement = pageRef.current;
-    if (!pdf || !canvas || !textLayer || !pageElement) return;
+    if (!pdf || !canvas || !textLayer || !pageElement || frameWidth <= 0) return;
 
     let cancelled = false;
     const renderTask: { cancel: () => void } = { cancel: () => {} };
@@ -135,7 +147,8 @@ function PdfDocument({
       const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
       const page = await pdf.getPage(pageNumber);
       if (cancelled) return;
-      const viewport = page.getViewport({ scale: USER_SCALE * PDF_TO_CSS_UNITS });
+      const base = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({ scale: pdfFitScale(base.width, frameWidth) });
       pageElement.style.setProperty("--scale-factor", String(viewport.scale));
       const context = canvas.getContext("2d");
       if (!context) return;
@@ -173,7 +186,7 @@ function PdfDocument({
       renderTask.cancel();
       textTask.cancel();
     };
-  }, [pdf, pageNumber]);
+  }, [pdf, pageNumber, frameWidth]);
 
   const activeExcerpt = excerpts.find((node) => node.id === activeExcerptId);
   const highlight =
@@ -226,29 +239,41 @@ function PdfDocument({
   }
 
   return (
-    <div data-testid="pdf-reader" className="min-h-svh bg-background text-foreground">
+    <div data-testid="pdf-reader" className="min-h-svh overflow-x-clip bg-background text-foreground">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-6 py-4">
-          <div>
-            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <Link className="underline" href={libraryPath(workspaceId)}>
-                返回文库
-              </Link>
-              <Link data-testid="open-mind-map" className="underline" href={mapPath(workspaceId)}>
-                脑图
-              </Link>
-              <Link data-testid="open-review" className="underline" href={reviewPath(workspaceId)}>
-                复习
-              </Link>
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+                <Link className="inline-flex min-h-11 items-center underline" href={libraryPath(workspaceId)}>
+                  返回文库
+                </Link>
+                <Link
+                  data-testid="open-mind-map"
+                  className="inline-flex min-h-11 items-center underline"
+                  href={mapPath(workspaceId)}
+                >
+                  脑图
+                </Link>
+                <Link
+                  data-testid="open-review"
+                  className="inline-flex min-h-11 items-center underline"
+                  href={reviewPath(workspaceId)}
+                >
+                  复习
+                </Link>
+              </div>
+              <h1 className="text-xl font-semibold break-words" data-testid="reader-title">
+                {title}
+              </h1>
             </div>
-            <h1 className="text-xl font-semibold" data-testid="reader-title">
-              {title}
-            </h1>
+            <LogoutButton />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
+              className="min-h-11 px-3"
               disabled={!pdf || pageNumber <= 1}
               onClick={() => setPageNumber((current) => Math.max(1, current - 1))}
             >
@@ -261,6 +286,7 @@ function PdfDocument({
             <Button
               type="button"
               variant="outline"
+              className="min-h-11 px-3"
               disabled={!pdf || pageNumber >= pageCount}
               onClick={() => setPageNumber((current) => Math.min(pageCount, current + 1))}
             >
@@ -269,7 +295,7 @@ function PdfDocument({
             <button
               type="button"
               data-testid="create-excerpt"
-              className="inline-flex h-8 items-center rounded-lg border border-border bg-background px-2.5 text-sm font-medium"
+              className="inline-flex min-h-11 items-center rounded-lg border border-border bg-background px-3 text-sm font-medium"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => void createFromSelection()}
             >
@@ -278,8 +304,8 @@ function PdfDocument({
           </div>
         </div>
       </header>
-      <main className="mx-auto grid max-w-7xl gap-6 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
-        <div>
+      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-4 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
+        <div ref={frameRef} className="min-w-0 max-w-full">
           {error ? (
             <p role="alert" data-testid="reader-error" className="mb-4 text-sm text-destructive">
               {error}
@@ -290,7 +316,7 @@ function PdfDocument({
               ref={pageRef}
               data-testid="pdf-page"
               data-page-number={pageNumber}
-              className="pdf-page relative mx-auto w-fit bg-white shadow-sm"
+              className="pdf-page relative mx-auto w-fit max-w-full bg-white shadow-sm"
             >
               <canvas ref={canvasRef} data-testid="pdf-canvas" className="block" />
               {highlight.length > 0 ? (
@@ -326,7 +352,7 @@ function PdfDocument({
                   <button
                     type="button"
                     data-testid="excerpt-card"
-                    className="w-full rounded-xl bg-card px-3 py-2 text-left text-sm ring-1 ring-foreground/10"
+                    className="min-h-11 w-full rounded-xl bg-card px-3 py-2 text-left text-sm break-words ring-1 ring-foreground/10"
                     onClick={() => {
                       setPageNumber(node.anchor.page);
                       setActiveExcerptId(node.id);

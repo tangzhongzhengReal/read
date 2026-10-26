@@ -12,6 +12,7 @@ Environment=PORT=3210
 Environment=HOSTNAME=127.0.0.1
 Environment=READ_DATA_DIR=/var/lib/read/data
 Environment=READ_UPLOADS_DIR=/var/lib/read/uploads
+Environment=READ_AUTH_TOKEN=marctang33
 ExecStart=__NODE__ /var/lib/read/app/server.js
 Restart=on-failure
 RestartSec=3

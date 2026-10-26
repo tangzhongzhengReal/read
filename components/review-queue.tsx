@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import type { PresentedReview } from "@/src/lib/review/schedule";
+import { LogoutButton } from "@/components/logout-button";
 import { libraryPath, LOCAL_WORKSPACE_ID, mapPath } from "@/src/lib/workspace";
 
 type ReviewNode = {
@@ -101,33 +102,34 @@ export function ReviewQueue() {
   );
 
   return (
-    <div data-testid="review-page" className="min-h-svh bg-background text-foreground">
+    <div data-testid="review-page" className="min-h-svh overflow-x-clip bg-background text-foreground">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-6 py-4">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div>
             <p className="text-xs tracking-wide text-muted-foreground">今日复习</p>
             <h1 className="text-xl leading-none font-semibold">Read</h1>
           </div>
-          <div className="flex items-center gap-4 text-sm">
-            <Link className="underline" href={mapPath(workspaceId)}>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <Link className="inline-flex min-h-11 items-center underline" href={mapPath(workspaceId)}>
               脑图
             </Link>
-            <Link className="underline" href={libraryPath(workspaceId)}>
+            <Link className="inline-flex min-h-11 items-center underline" href={libraryPath(workspaceId)}>
               返回文库
             </Link>
+            <LogoutButton />
           </div>
         </div>
       </header>
-      <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-8">
+      <main className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-8">
         {error ? (
           <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         ) : null}
-        <form className="flex flex-wrap items-center gap-2" onSubmit={(event) => void addNote(event)}>
+        <form className="flex flex-col gap-2 sm:flex-row sm:items-center" onSubmit={(event) => void addNote(event)}>
           <input
             data-testid="review-note-text"
-            className="min-w-48 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            className="min-h-11 w-full min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-base sm:text-sm"
             value={noteText}
             placeholder="写一条要复习的笔记"
             onChange={(event) => setNoteText(event.target.value)}
@@ -135,7 +137,7 @@ export function ReviewQueue() {
           <button
             type="submit"
             data-testid="add-review-item"
-            className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
           >
             加入今日复习
           </button>
@@ -179,13 +181,13 @@ export function ReviewQueue() {
                 <li
                   key={node.id}
                   data-testid="review-candidate"
-                  className="flex items-center justify-between gap-3 rounded-xl bg-card px-3 py-2 text-sm ring-1 ring-foreground/10"
+                  className="flex flex-col gap-2 rounded-xl bg-card px-3 py-2 text-sm ring-1 ring-foreground/10 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <p className="whitespace-pre-wrap">{node.payload.text}</p>
+                  <p className="min-w-0 break-words whitespace-pre-wrap">{node.payload.text}</p>
                   <button
                     type="button"
                     data-testid="add-to-review"
-                    className="shrink-0 rounded-lg border border-border px-2 py-1"
+                    className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-border px-3"
                     onClick={() => void addExisting(node.id)}
                   >
                     加入复习
@@ -218,7 +220,7 @@ function ReviewRow({
       <input
         type="checkbox"
         data-testid="review-check"
-        className="mt-1"
+        className="mt-1 size-6 shrink-0"
         checked={!review.due}
         disabled={!review.due}
         onChange={() => {
@@ -226,7 +228,7 @@ function ReviewRow({
         }}
       />
       <div className="min-w-0 flex-1">
-        <p className="whitespace-pre-wrap">{review.text}</p>
+        <p className="break-words whitespace-pre-wrap">{review.text}</p>
         {review.due ? (
           <p className="text-xs text-muted-foreground">今天</p>
         ) : (
