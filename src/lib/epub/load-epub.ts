@@ -1,7 +1,18 @@
 import type { Book } from "epubjs";
 import { prefetchEpubRuntime } from "@/src/lib/epub/runtime";
+import { sanitizeEpubArchive } from "@/src/lib/epub/sanitize-archive";
 
 export type EpubOpenStage = "preparing" | "downloading" | "parsing" | "rendering";
+
+export const EPUB_RENDER_TIMEOUT_MS = 10_000;
+export const EPUB_RENDER_TIMEOUT_MESSAGE = "排版超时，无法显示这一页";
+export const EPUB_RENDER_FAILURE_MESSAGE = "无法完成排版";
+
+export type EpubDisplayTarget = {
+  display: (target?: string) => Promise<unknown>;
+  on: (event: "displayerror", listener: (error: unknown) => void) => void;
+  off: (event: "displayerror", listener: (error: unknown) => void) => void;
+};
 
 export const EPUB_ARCHIVE_OPTIONS = {
   replacements: "none",
@@ -22,6 +33,55 @@ export function epubStageLabel(stage: EpubOpenStage, progress: number | null): s
   }
   if (stage === "parsing") return "正在解析 EPUB…";
   return "正在排版…";
+}
+
+export function displayEpubSection(
+  rendition: EpubDisplayTarget,
+  target?: string,
+  timeoutMs = EPUB_RENDER_TIMEOUT_MS,
+  signal?: AbortSignal,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      finish(() => reject(new Error(EPUB_RENDER_TIMEOUT_MESSAGE)));
+    }, timeoutMs);
+    const onAbort = () => {
+      finish(() => reject(new DOMException("The operation was aborted.", "AbortError")));
+    };
+    const onError = () => {
+      finish(() => reject(new Error(EPUB_RENDER_FAILURE_MESSAGE)));
+    };
+
+    function finish(settle: () => void) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      rendition.off("displayerror", onError);
+      settle();
+    }
+
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
+    rendition.on("displayerror", onError);
+
+    let pending: Promise<unknown>;
+    try {
+      pending = target === undefined ? rendition.display() : rendition.display(target);
+    } catch (error) {
+      pending = Promise.reject(error);
+    }
+    void pending.then(
+      () => finish(() => resolve()),
+      (error: unknown) => {
+        finish(() => reject(error instanceof Error ? error : new Error(EPUB_RENDER_FAILURE_MESSAGE)));
+      },
+    );
+  });
 }
 
 export async function downloadEpubBytes(
@@ -91,8 +151,9 @@ export async function openEpubBook(input: {
   if (!runtimeReady) onStage("preparing", null);
   const runtime = await runtimePromise;
   onStage("parsing", null);
-  const copy = new ArrayBuffer(bytes.byteLength);
-  new Uint8Array(copy).set(bytes);
+  const prepared = await sanitizeEpubArchive(bytes);
+  const copy = new ArrayBuffer(prepared.byteLength);
+  new Uint8Array(copy).set(prepared);
   const href = (input.createObjectURL ?? URL.createObjectURL)(
     new Blob([copy], { type: "application/epub+zip" }),
   );
