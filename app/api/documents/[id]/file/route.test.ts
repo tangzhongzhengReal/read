@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, expect, test } from "vitest";
+import { buildTextEpub, SAMPLE_EPUB_CHAPTER_ONE } from "@/src/lib/epub/text-epub";
 import { DocumentSchema } from "@/src/lib/models";
 import { getDocumentStore, resetDocumentStores } from "@/src/lib/store/documents";
 import { POST } from "../../upload/route";
@@ -59,6 +60,31 @@ test("GET returns the stored pdf bytes", async () => {
 
   expect(response.status).toBe(200);
   expect(response.headers.get("content-type")).toContain("application/pdf");
+  const body = Buffer.from(await response.arrayBuffer());
+  expect(body.equals(Buffer.from(bytes))).toBe(true);
+});
+
+test("GET returns the stored epub bytes", async () => {
+  const bytes = buildTextEpub([SAMPLE_EPUB_CHAPTER_ONE]);
+  const form = new FormData();
+  form.set("workspaceId", "ws-1");
+  form.set("title", "Sample EPUB");
+  form.set(
+    "file",
+    new File([Buffer.from(bytes)], "sample.epub", { type: "application/epub+zip" }),
+  );
+  const created = await POST(
+    new NextRequest("http://localhost/api/documents/upload", { method: "POST", body: form }),
+  );
+  expect(created.status).toBe(201);
+  const { document } = (await created.json()) as { document: { id: string } };
+
+  const response = await GET(fileRequest(document.id, "ws-1"), {
+    params: Promise.resolve({ id: document.id }),
+  });
+
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toContain("application/epub+zip");
   const body = Buffer.from(await response.arrayBuffer());
   expect(body.equals(Buffer.from(bytes))).toBe(true);
 });

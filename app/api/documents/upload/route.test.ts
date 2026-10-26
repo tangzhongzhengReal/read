@@ -4,6 +4,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, expect, test } from "vitest";
+import {
+  buildTextEpub,
+  SAMPLE_EPUB_CHAPTER_ONE,
+  SAMPLE_EPUB_CHAPTER_TWO,
+} from "@/src/lib/epub/text-epub";
 import { resetDocumentStores } from "@/src/lib/store/documents";
 import { POST } from "./route";
 
@@ -82,7 +87,7 @@ test("rejects a file labeled pdf when the bytes are not a pdf", async () => {
   expect(response.status).toBe(415);
 });
 
-test("rejects an epub upload", async () => {
+test("rejects a file labeled epub when the bytes are not an epub", async () => {
   const response = await POST(
     uploadRequest({
       bytes: new TextEncoder().encode("PK epub"),
@@ -92,6 +97,74 @@ test("rejects an epub upload", async () => {
   );
 
   expect(response.status).toBe(415);
+});
+
+test("rejects an epub payload labeled as plain text", async () => {
+  process.env.READ_MAX_UPLOAD_BYTES = "16384";
+  const response = await POST(
+    uploadRequest({
+      bytes: buildTextEpub([SAMPLE_EPUB_CHAPTER_ONE]),
+      filename: "notes.txt",
+      type: "text/plain",
+    }),
+  );
+
+  expect(response.status).toBe(415);
+});
+
+test("accepts an epub, stores the file, and records an epub storageKey", async () => {
+  process.env.READ_MAX_UPLOAD_BYTES = "16384";
+  const bytes = buildTextEpub([SAMPLE_EPUB_CHAPTER_ONE, SAMPLE_EPUB_CHAPTER_TWO]);
+  const response = await POST(
+    uploadRequest({
+      bytes,
+      filename: "Sample Book.epub",
+      type: "application/epub+zip",
+      title: "Sample Book",
+    }),
+  );
+
+  expect(response.status).toBe(201);
+  const body = (await response.json()) as {
+    document: {
+      id: string;
+      workspaceId: string;
+      mediaType: string;
+      storageKey: string;
+      contentHash: string;
+      title: string;
+    };
+  };
+  expect(body.document.workspaceId).toBe("ws-1");
+  expect(body.document.mediaType).toBe("epub");
+  expect(body.document.title).toBe("Sample Book");
+  expect(body.document.storageKey).toBe(`ws-1/${body.document.id}.epub`);
+  expect(body.document.contentHash).toBe(
+    createHash("sha256").update(bytes).digest("hex"),
+  );
+
+  const stored = await readFile(path.join(uploadsDir, body.document.storageKey));
+  expect(stored.equals(Buffer.from(bytes))).toBe(true);
+
+  const raw = await readFile(path.join(dataDir, "ws-1", "documents.jsonl"), "utf8");
+  expect(raw).toContain('"mediaType":"epub"');
+  expect(raw).toContain(body.document.storageKey);
+});
+
+test("accepts an epub when the browser omits a specific media type", async () => {
+  process.env.READ_MAX_UPLOAD_BYTES = "16384";
+  const response = await POST(
+    uploadRequest({
+      bytes: buildTextEpub([SAMPLE_EPUB_CHAPTER_ONE]),
+      filename: "chapter.epub",
+      type: "",
+    }),
+  );
+
+  expect(response.status).toBe(201);
+  const body = (await response.json()) as { document: { title: string; mediaType: string } };
+  expect(body.document.mediaType).toBe("epub");
+  expect(body.document.title).toBe("chapter");
 });
 
 test("accepts a pdf, stores the file, and records storageKey", async () => {

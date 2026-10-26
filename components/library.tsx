@@ -47,7 +47,7 @@ export function Library() {
     form.set("file", file);
     const response = await fetch("/api/documents/upload", { method: "POST", body: form });
     if (!response.ok) {
-      setError(response.status === 415 ? "只能导入 PDF。" : "导入失败。");
+      setError(response.status === 415 ? "只能导入 PDF 或 EPUB。" : "导入失败。");
       return;
     }
     const body = (await response.json()) as { document: { id: string; workspaceId: string } };
@@ -56,7 +56,7 @@ export function Library() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      <div className="flex flex-wrap gap-3">
         <label className="inline-flex cursor-pointer items-center rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">
           导入 PDF
           <input
@@ -64,6 +64,20 @@ export function Library() {
             className="sr-only"
             type="file"
             accept="application/pdf,.pdf"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) void onFile(file);
+            }}
+          />
+        </label>
+        <label className="inline-flex cursor-pointer items-center rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">
+          导入 EPUB
+          <input
+            data-testid="upload-epub"
+            className="sr-only"
+            type="file"
+            accept="application/epub+zip,.epub"
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.target.value = "";
