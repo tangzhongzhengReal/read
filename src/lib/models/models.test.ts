@@ -4,6 +4,7 @@ import {
   DocumentSchema,
   EdgeSchema,
   NodeSchema,
+  ReviewSchema,
   WorkspaceSchema,
 } from "./index";
 
@@ -98,6 +99,32 @@ test("edge and code run accept their stored shapes", () => {
       status: "queued",
       language: "ruby",
       source: "puts 1",
+      createdAt: now,
+      updatedAt: now,
+    }).success,
+  ).toBe(false);
+});
+
+test("review stores a due time and a simple interval", () => {
+  expect(
+    ReviewSchema.parse({
+      id: "rev",
+      workspaceId: "ws",
+      nodeId: "n",
+      dueAt: now,
+      intervalDays: 1,
+      createdAt: now,
+      updatedAt: now,
+    }),
+  ).toMatchObject({ nodeId: "n", intervalDays: 1 });
+
+  expect(
+    ReviewSchema.safeParse({
+      id: "rev",
+      workspaceId: "ws",
+      nodeId: "n",
+      dueAt: now,
+      intervalDays: 0,
       createdAt: now,
       updatedAt: now,
     }).success,

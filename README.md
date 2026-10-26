@@ -15,7 +15,7 @@ npx playwright install chromium
 npm run e2e
 ```
 
-`npm run e2e` 需要先 `npm run build`。Playwright 会启动 `npm start`，检查文库壳、PDF 与 EPUB 的上传、阅读、摘录跳回，以及 `POST /api/documents/upload`。
+`npm run e2e` 需要先 `npm run build`。Playwright 会启动 `npm start`，检查文库壳、PDF 与 EPUB 的上传、阅读、摘录跳回、脑图连线、复习勾选，以及 `POST /api/documents/upload`。
 
 JSONL 默认写到 `./data`，PDF 和 EPUB 默认写到 `./uploads`。可以用 `READ_DATA_DIR` 和 `READ_UPLOADS_DIR` 改目录。测试使用临时目录。
 
@@ -24,6 +24,14 @@ JSONL 默认写到 `./data`，PDF 和 EPUB 默认写到 `./uploads`。可以用 
 代码节点在短命 Docker 容器里运行（`--network=none`、只读根文件系统、丢弃全部 capabilities），不会在 Next.js 进程里执行用户源码。语言是 javascript、python 和 go。状态从 `queued` 到 `running`，再落到 `succeeded`、`failed` 或 `timed_out`，记录在 `code-runs.jsonl`。
 
 没有 Docker daemon 时，状态机、参数和 API 单测仍然运行；真正启动容器的集成测试和 Playwright 用例会跳过。设置 `READ_DOCKER_TESTS=0` 可以强制跳过。本机有 Docker 时，`npm test` 和 `npm run e2e` 会拉起 `node:22-alpine`、`python:3.12-alpine` 和 `golang:1.23-alpine`。GitHub Actions 的 ubuntu runner 自带 Docker 时同样会跑这些用例；daemon 不可用时跳过，不把主检查标红。
+
+## 使用
+
+1. 打开首页。默认工作区是 `local`。也可以填写名称后点「新建工作区」，记录写在 `data/workspaces.jsonl`。
+2. 导入 PDF 或 EPUB，选中文字后做成摘录。
+3. 打开 `/map`，把摘录和笔记连起来。代码节点可以跑 javascript、python 或 go。
+4. 打开 `/review`。摘录和笔记可以加入今日复习；勾选后记下下次复习日期，间隔从 1 天起加倍，最长 32 天。这不是 Anki。
+5. 刷新后，文档、摘录、连线、代码输出和复习勾选都还在对应的 JSONL 里。
 
 ## Production
 

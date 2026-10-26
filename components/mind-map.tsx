@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { LOCAL_WORKSPACE_ID } from "@/src/lib/workspace";
+import { libraryPath, LOCAL_WORKSPACE_ID, reviewPath } from "@/src/lib/workspace";
 
 const MindMapCanvas = dynamic(() => import("@/components/mind-map-canvas"), {
   ssr: false,
@@ -22,9 +22,14 @@ export function MindMap() {
             <p className="text-xs tracking-wide text-muted-foreground">脑图</p>
             <h1 className="text-xl leading-none font-semibold">Read</h1>
           </div>
-          <Link className="text-sm underline" href="/">
-            返回文库
-          </Link>
+          <div className="flex items-center gap-4 text-sm">
+            <Link data-testid="open-review" className="underline" href={reviewPath(workspaceId)}>
+              复习
+            </Link>
+            <Link className="underline" href={libraryPath(workspaceId)}>
+              返回文库
+            </Link>
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-6 py-6">

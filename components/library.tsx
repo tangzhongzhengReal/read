@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -9,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { LOCAL_WORKSPACE_ID, readerPath } from "@/src/lib/workspace";
+import { LOCAL_WORKSPACE_ID, mapPath, readerPath, reviewPath } from "@/src/lib/workspace";
 
 type LibraryDocument = {
   id: string;
@@ -18,32 +19,70 @@ type LibraryDocument = {
   mediaType: string;
 };
 
+type WorkspaceRecord = {
+  id: string;
+  name: string;
+};
+
 export function Library() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const workspaceId = params.get("workspaceId") || LOCAL_WORKSPACE_ID;
+  const [workspaceName, setWorkspaceName] = useState("本地");
+  const [workspaces, setWorkspaces] = useState<WorkspaceRecord[]>([]);
+  const [draftName, setDraftName] = useState("");
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/documents?workspaceId=${encodeURIComponent(LOCAL_WORKSPACE_ID)}`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error("无法读取文库");
-        return (await response.json()) as { documents: LibraryDocument[] };
-      })
-      .then((body) => {
-        if (!cancelled) setDocuments(body.documents);
-      })
-      .catch(() => {
-        if (!cancelled) setDocuments([]);
-      });
+    void (async () => {
+      try {
+        const [workspaceResponse, documentResponse] = await Promise.all([
+          fetch("/api/workspaces"),
+          fetch(`/api/documents?workspaceId=${encodeURIComponent(workspaceId)}`),
+        ]);
+        if (!workspaceResponse.ok || !documentResponse.ok) throw new Error("无法读取文库");
+        const workspaceBody = (await workspaceResponse.json()) as { workspaces: WorkspaceRecord[] };
+        const documentBody = (await documentResponse.json()) as { documents: LibraryDocument[] };
+        if (cancelled) return;
+        const current = workspaceBody.workspaces.find((workspace) => workspace.id === workspaceId);
+        setWorkspaces(workspaceBody.workspaces);
+        setWorkspaceName(current?.name ?? (workspaceId === LOCAL_WORKSPACE_ID ? "本地" : workspaceId));
+        setDocuments(documentBody.documents);
+      } catch {
+        if (!cancelled) {
+          setWorkspaceName(workspaceId === LOCAL_WORKSPACE_ID ? "本地" : workspaceId);
+          setDocuments([]);
+        }
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [workspaceId]);
+
+  async function createWorkspace() {
+    const name = draftName.trim();
+    if (!name) return;
+    setError(null);
+    const response = await fetch("/api/workspaces", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!response.ok) {
+      setError("无法新建工作区。");
+      return;
+    }
+    const body = (await response.json()) as { workspace: { id: string } };
+    router.push(`/?workspaceId=${encodeURIComponent(body.workspace.id)}`);
+  }
 
   async function onFile(file: File) {
     setError(null);
     const form = new FormData();
-    form.set("workspaceId", LOCAL_WORKSPACE_ID);
+    form.set("workspaceId", workspaceId);
     form.set("file", file);
     const response = await fetch("/api/documents/upload", { method: "POST", body: form });
     if (!response.ok) {
@@ -56,13 +95,65 @@ export function Library() {
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <p data-testid="workspace-title" className="text-sm font-medium">
+          {workspaceName}
+        </p>
+        <p data-testid="workspace-id" className="text-xs text-muted-foreground">
+          {workspaceId}
+        </p>
+      </div>
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void createWorkspace();
+        }}
+      >
+        <input
+          data-testid="workspace-name"
+          className="min-w-40 rounded-lg border border-border bg-background px-3 py-2 text-sm"
+          value={draftName}
+          placeholder="工作区名称"
+          onChange={(event) => setDraftName(event.target.value)}
+        />
+        <button
+          type="submit"
+          data-testid="create-workspace"
+          className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+        >
+          新建工作区
+        </button>
+      </form>
+      {workspaces.length > 0 ? (
+        <ul className="flex flex-wrap gap-2" data-testid="workspace-list">
+          {workspaces.map((workspace) => (
+            <li key={workspace.id}>
+              <Link
+                data-testid="workspace-link"
+                className="text-sm underline"
+                href={`/?workspaceId=${encodeURIComponent(workspace.id)}`}
+              >
+                {workspace.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <div className="flex flex-wrap gap-3">
         <Link
           data-testid="open-mind-map"
           className="inline-flex items-center rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
-          href="/map"
+          href={mapPath(workspaceId)}
         >
           脑图
+        </Link>
+        <Link
+          data-testid="open-review"
+          className="inline-flex items-center rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+          href={reviewPath(workspaceId)}
+        >
+          复习
         </Link>
         <label className="inline-flex cursor-pointer items-center rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">
           导入 PDF

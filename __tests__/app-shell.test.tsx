@@ -2,9 +2,18 @@
  * @vitest-environment jsdom
  */
 import { existsSync } from "node:fs";
-import { render, screen } from "@testing-library/react";
-import { expect, test } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, expect, test, vi } from "vitest";
 import Home from "../app/page";
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
+
+afterEach(() => {
+  cleanup();
+});
 
 test("home page is the library shell, not the static Hello World", () => {
   render(<Home />);

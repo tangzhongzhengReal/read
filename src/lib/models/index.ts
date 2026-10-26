@@ -173,6 +173,32 @@ export const CodeRunCreateSchema = z.object({
   stdin: z.string().max(10_000).optional(),
 });
 
+export const ReviewSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  nodeId: z.string().min(1),
+  dueAt: timestamp,
+  lastReviewedAt: timestamp.optional(),
+  intervalDays: z.number().int().positive().max(365),
+  createdAt: timestamp,
+  updatedAt: timestamp,
+  deleted: z.boolean().optional(),
+});
+
+export const ReviewCreateSchema = z.object({
+  workspaceId: z.string().min(1),
+  nodeId: z.string().min(1),
+});
+
+export const ReviewUpdateSchema = z.object({
+  workspaceId: z.string().min(1),
+  reviewed: z.literal(true),
+});
+
+export const WorkspaceCreateSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+});
+
 export const notePayloadSchema = z.object({
   text: z.string().trim().min(1),
 });
@@ -194,3 +220,4 @@ export type Edge = z.infer<typeof EdgeSchema>;
 export type CodeRun = z.infer<typeof CodeRunSchema>;
 export type CodeRunStatus = CodeRun["status"];
 export type CodeLanguage = CodeRun["language"];
+export type Review = z.infer<typeof ReviewSchema>;
