@@ -64,7 +64,15 @@ export const CodeRunSchema = z.object({
   updatedAt: timestamp,
 });
 
+export const DocumentCreateSchema = DocumentSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deleted: true,
+});
+
 export type Workspace = z.infer<typeof WorkspaceSchema>;
+export type DocumentCreate = z.infer<typeof DocumentCreateSchema>;
 export type Document = z.infer<typeof DocumentSchema>;
 export type Node = z.infer<typeof NodeSchema>;
 export type Edge = z.infer<typeof EdgeSchema>;
