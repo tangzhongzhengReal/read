@@ -1,11 +1,17 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import type { Book } from "epubjs";
 import { expect, test } from "vitest";
 import {
   EPUB_ARCHIVE_OPTIONS,
+  EPUB_RENDER_FAILURE_MESSAGE,
+  EPUB_RENDER_TIMEOUT_MESSAGE,
+  displayEpubSection,
   downloadEpubBytes,
   epubFileUrl,
   epubStageLabel,
   openEpubBook,
+  type EpubDisplayTarget,
 } from "./load-epub";
 
 test("stage labels describe download and parse instead of a single waiting line", () => {
@@ -96,3 +102,71 @@ test("opening starts the runtime and the download together, then uses a blob url
   expect(stages.indexOf("downloading")).toBeGreaterThanOrEqual(0);
   expect(stages.at(-1)).toBe("parsing");
 });
+
+test("opening rewrites tuple paths before epub.js fetches the blob", async () => {
+  const fixture = readFileSync(path.join(process.cwd(), "fixtures/epub/malformed-tuple-paths.epub"));
+  let archivedPromise = Promise.resolve(new Uint8Array());
+  await openEpubBook({
+    url: "/book.epub",
+    fetchImpl: async () => new Response(fixture, { status: 200 }),
+    createObjectURL: (blob) => {
+      archivedPromise = blob.arrayBuffer().then((buffer) => new Uint8Array(buffer));
+      return "blob:sanitized-epub";
+    },
+    loadRuntime: async () => ({
+      default() {
+        return { ready: Promise.resolve() } as Book;
+      },
+    }),
+  });
+  const text = Buffer.from(await archivedPromise).toString("latin1");
+  expect(text.includes("('chapter0.xhtml',)")).toBe(false);
+  expect(text.includes("chapter2.xhtml")).toBe(true);
+  expect(text.includes("stylesheets.css")).toBe(false);
+});
+
+test("a rendition that never finishes rejects instead of hanging", async () => {
+  const rendition = fakeRendition(() => new Promise<void>(() => {}));
+  await expect(displayEpubSection(rendition, undefined, 30)).rejects.toThrow(EPUB_RENDER_TIMEOUT_MESSAGE);
+});
+
+test("display errors surface immediately when epub.js swallows the promise", async () => {
+  const rendition = fakeRendition(
+    () => new Promise<void>(() => {}),
+    new TypeError("doc.createElement is not a function"),
+  );
+  const started = Date.now();
+  await expect(displayEpubSection(rendition, undefined, 5_000)).rejects.toThrow(
+    EPUB_RENDER_FAILURE_MESSAGE,
+  );
+  expect(Date.now() - started).toBeLessThan(1_000);
+});
+
+test("a finished rendition is not reported as a timeout", async () => {
+  const rendition = fakeRendition(async () => {});
+  await expect(displayEpubSection(rendition, "epubcfi(/6/2)", 50)).resolves.toBeUndefined();
+});
+
+function fakeRendition(
+  display: (target?: string) => Promise<void>,
+  emitError?: unknown,
+): EpubDisplayTarget {
+  const listeners = new Set<(error: unknown) => void>();
+  return {
+    display: (target) => {
+      const pending = display(target);
+      if (emitError !== undefined) {
+        queueMicrotask(() => {
+          for (const listener of listeners) listener(emitError);
+        });
+      }
+      return pending;
+    },
+    on(_event, listener) {
+      listeners.add(listener);
+    },
+    off(_event, listener) {
+      listeners.delete(listener);
+    },
+  };
+}

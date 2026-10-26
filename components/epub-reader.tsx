@@ -6,6 +6,7 @@ import type { Book, Rendition } from "epubjs";
 import { LogoutButton } from "@/components/logout-button";
 import { Button } from "@/components/ui/button";
 import {
+  displayEpubSection,
   epubFileUrl,
   epubStageLabel,
   openEpubBook,
@@ -103,7 +104,7 @@ export function EpubReader({
         });
         setStage("rendering");
         setProgress(null);
-        await rendition.display();
+        await displayEpubSection(rendition, undefined, undefined, controller.signal);
         if (cancelled) return;
         setReady(true);
       } catch (cause: unknown) {
@@ -204,9 +205,13 @@ export function EpubReader({
   async function showExcerpt(cfi: string) {
     const rendition = renditionRef.current;
     if (!rendition) return;
-    rendition.annotations.remove(cfi, "highlight");
-    await rendition.display(cfi);
-    rendition.annotations.highlight(cfi, { testid: "epub-highlight" }, undefined, "excerpt-highlight");
+    try {
+      rendition.annotations.remove(cfi, "highlight");
+      await displayEpubSection(rendition, cfi);
+      rendition.annotations.highlight(cfi, { testid: "epub-highlight" }, undefined, "excerpt-highlight");
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : "无法打开 EPUB");
+    }
   }
 
   return (
