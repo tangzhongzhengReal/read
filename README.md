@@ -1,6 +1,6 @@
 # Read
 
-单人文档学习笔记（MarginNote 思路，自有产品）。PDF 放在 `uploads/`，结构化数据追加到 `data/<workspaceId>/*.jsonl`。没有数据库。
+单人文档学习笔记（MarginNote 思路，自有产品）。PDF 和 EPUB 放在 `uploads/`，结构化数据追加到 `data/<workspaceId>/*.jsonl`。没有数据库。
 
 本地和 CI 的 `npm start` 运行 Next.js standalone（`node .next/standalone/server.js`）。推送到 `main` 后，GitHub Actions 把同一份服务部署到 VPS，由 systemd 监听 `127.0.0.1:3210`，nginx 反代到该进程，因此 [https://read.coming.js.cn](https://read.coming.js.cn) 可以访问 `/api`。
 
@@ -15,9 +15,9 @@ npx playwright install chromium
 npm run e2e
 ```
 
-`npm run e2e` 需要先 `npm run build`。Playwright 会启动 `npm start`，检查文库壳、PDF 上传与阅读、摘录跳回，以及 `POST /api/documents/upload`。
+`npm run e2e` 需要先 `npm run build`。Playwright 会启动 `npm start`，检查文库壳、PDF 与 EPUB 的上传、阅读、摘录跳回，以及 `POST /api/documents/upload`。
 
-JSONL 默认写到 `./data`，PDF 默认写到 `./uploads`。可以用 `READ_DATA_DIR` 和 `READ_UPLOADS_DIR` 改目录。测试使用临时目录。
+JSONL 默认写到 `./data`，PDF 和 EPUB 默认写到 `./uploads`。可以用 `READ_DATA_DIR` 和 `READ_UPLOADS_DIR` 改目录。测试使用临时目录。
 
 ## Production
 
@@ -34,7 +34,7 @@ JSONL 默认写到 `./data`，PDF 默认写到 `./uploads`。可以用 `READ_DAT
 ```text
 /var/lib/read/app       # 每次发布替换的 standalone 服务
 /var/lib/read/data      # JSONL，发布不会删除
-/var/lib/read/uploads   # PDF，发布不会删除
+/var/lib/read/uploads   # PDF 与 EPUB，发布不会删除
 ```
 
 systemd 单元是 `read.service`。它执行 `node /var/lib/read/app/server.js`，环境变量：

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { NextRequest } from "next/server";
+import { isEpubUpload } from "@/src/lib/epub/epub-file";
 import { DocumentSchema } from "@/src/lib/models";
 import { assertWorkspaceId, getDocumentStore } from "@/src/lib/store/documents";
 import { maxUploadBytes, writeUpload } from "@/src/lib/store/uploads";
@@ -34,21 +35,22 @@ export async function POST(request: NextRequest) {
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
-  if (!isPdf(bytes, file.type)) {
-    return Response.json({ error: "only pdf files are accepted" }, { status: 415 });
+  const mediaType = mediaTypeOf(bytes, file);
+  if (!mediaType) {
+    return Response.json({ error: "only pdf and epub files are accepted" }, { status: 415 });
   }
 
   const id = randomUUID();
-  const storageKey = `${workspaceId}/${id}.pdf`;
+  const storageKey = `${workspaceId}/${id}.${mediaType}`;
   const contentHash = createHash("sha256").update(bytes).digest("hex");
   const now = new Date().toISOString();
   const document = DocumentSchema.parse({
     id,
     workspaceId,
-    mediaType: "pdf",
+    mediaType,
     storageKey,
     contentHash,
-    title: documentTitle(form.get("title"), file.name),
+    title: documentTitle(form.get("title"), file.name, mediaType),
     createdAt: now,
     updatedAt: now,
   });
@@ -69,10 +71,22 @@ function isPdf(bytes: Uint8Array, mediaType: string): boolean {
   return Buffer.from(bytes.subarray(0, 5)).toString("utf8") === "%PDF-";
 }
 
-function documentTitle(raw: FormDataEntryValue | null, filename: string): string {
+function mediaTypeOf(bytes: Uint8Array, file: File): "pdf" | "epub" | null {
+  if (isPdf(bytes, file.type)) return "pdf";
+  if (isEpubUpload(bytes, file)) return "epub";
+  return null;
+}
+
+function documentTitle(
+  raw: FormDataEntryValue | null,
+  filename: string,
+  mediaType: "pdf" | "epub",
+): string {
   if (typeof raw === "string" && raw.trim()) return raw.trim();
-  const base = path.basename(filename).replace(/\.pdf$/i, "").trim();
-  return base || "未命名 PDF";
+  const extension = mediaType === "pdf" ? /\.pdf$/i : /\.epub$/i;
+  const fallback = mediaType === "pdf" ? "未命名 PDF" : "未命名 EPUB";
+  const base = path.basename(filename).replace(extension, "").trim();
+  return base || fallback;
 }
 
 function invalidWorkspace(error: unknown): Response {

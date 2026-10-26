@@ -21,7 +21,11 @@ export async function GET(
   }
 
   const document = await getDocumentStore(workspaceId).get(id);
-  if (!document || document.workspaceId !== workspaceId || document.mediaType !== "pdf") {
+  if (!document || document.workspaceId !== workspaceId) {
+    return Response.json({ error: "document not found" }, { status: 404 });
+  }
+  const contentType = contentTypeFor(document.mediaType);
+  if (!contentType) {
     return Response.json({ error: "document not found" }, { status: 404 });
   }
 
@@ -40,7 +44,7 @@ export async function GET(
     return new Response(bytes, {
       status: 200,
       headers: {
-        "content-type": "application/pdf",
+        "content-type": contentType,
         "content-length": String(bytes.byteLength),
         "cache-control": "private, max-age=0",
       },
@@ -51,6 +55,12 @@ export async function GET(
     }
     throw error;
   }
+}
+
+function contentTypeFor(mediaType: string): string | null {
+  if (mediaType === "pdf") return "application/pdf";
+  if (mediaType === "epub") return "application/epub+zip";
+  return null;
 }
 
 function invalidWorkspace(error: unknown): Response {

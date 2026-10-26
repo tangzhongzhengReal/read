@@ -64,19 +64,26 @@ export const CodeRunSchema = z.object({
   updatedAt: timestamp,
 });
 
-export const ExcerptAnchorSchema = z.object({
-  page: z.number().int().positive(),
-  rects: z
-    .array(
-      z.object({
-        x: z.number().finite(),
-        y: z.number().finite(),
-        width: z.number().finite().positive(),
-        height: z.number().finite().positive(),
-      }),
-    )
-    .min(1),
+const excerptRectSchema = z.object({
+  x: z.number().finite(),
+  y: z.number().finite(),
+  width: z.number().finite().positive(),
+  height: z.number().finite().positive(),
 });
+
+export const PdfExcerptAnchorSchema = z.object({
+  page: z.number().int().positive(),
+  rects: z.array(excerptRectSchema).min(1),
+});
+
+export const EpubExcerptAnchorSchema = z.object({
+  cfi: z.string().regex(/^epubcfi\([\s\S]+\)$/),
+});
+
+export const ExcerptAnchorSchema = z.union([
+  PdfExcerptAnchorSchema,
+  EpubExcerptAnchorSchema,
+]);
 
 export const ExcerptCreateSchema = z.object({
   workspaceId: z.string().min(1),
