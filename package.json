@@ -9,7 +9,7 @@
     "build": "next build",
     "build:nginx": "node scripts/copy-pdf-assets.mjs && node scripts/build-nginx-site.mjs",
     "postinstall": "node scripts/copy-pdf-assets.mjs",
-    "start": "next start",
+    "start": "bash scripts/start-standalone.sh",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",

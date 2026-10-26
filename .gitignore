@@ -33,6 +33,9 @@
 # e2e server state
 /e2e-runtime/
 
+# standalone deploy bundle
+/release/
+
 # production
 /build
 
