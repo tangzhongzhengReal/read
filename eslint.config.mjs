@@ -15,6 +15,9 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "test-results/**",
     "playwright-report/**",
+    "public/pdf.worker.min.mjs",
+    "public/standard_fonts/**",
+    "release/**",
   ]),
 ]);
 

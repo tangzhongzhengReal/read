@@ -64,6 +64,30 @@ export const CodeRunSchema = z.object({
   updatedAt: timestamp,
 });
 
+export const ExcerptAnchorSchema = z.object({
+  page: z.number().int().positive(),
+  rects: z
+    .array(
+      z.object({
+        x: z.number().finite(),
+        y: z.number().finite(),
+        width: z.number().finite().positive(),
+        height: z.number().finite().positive(),
+      }),
+    )
+    .min(1),
+});
+
+export const ExcerptCreateSchema = z.object({
+  workspaceId: z.string().min(1),
+  documentId: z.string().min(1),
+  type: z.literal("excerpt"),
+  payload: z.object({
+    text: z.string().trim().min(1),
+  }),
+  anchor: ExcerptAnchorSchema,
+});
+
 export const DocumentCreateSchema = DocumentSchema.omit({
   id: true,
   createdAt: true,

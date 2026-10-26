@@ -36,19 +36,30 @@ jobs:
       - name: Test
         run: npm test
 
-      - name: Build static site
-        run: npm run build:nginx
+      - name: Build server
+        run: npm run build
 
-      - name: Copy site to server
+      - name: Package standalone server
+        run: bash scripts/package-standalone.sh
+
+      - name: Copy release to server
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
           port: ${{ secrets.SSH_PORT }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # Publish the static shell only. rm stays false so /var/www/read is not deleted.
-          source: "out/*"
-          strip_components: 1
-          target: /var/www/read
+          source: "release/read-standalone.tgz,release/remote-install.sh,release/read.service,release/migrate-nginx-config.mjs,release/read.coming.js.cn.conf"
+          target: /tmp/read-deploy
           overwrite: true
-          rm: false
+          strip_components: 1
+
+      - name: Install and restart
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 10m
+          script: bash /tmp/read-deploy/remote-install.sh
