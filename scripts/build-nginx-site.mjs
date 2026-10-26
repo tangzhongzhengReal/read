@@ -3,6 +3,8 @@ import { access, rename } from "node:fs/promises";
 
 const apiDir = "app/api";
 const holdDir = "app/_api_hold";
+const proxyFile = "proxy.ts";
+const proxyHold = "proxy.ts.hold";
 
 async function exists(target) {
   try {
@@ -32,13 +34,19 @@ if (await exists(holdDir)) {
 }
 
 let moved = false;
+let movedProxy = false;
 if (await exists(apiDir)) {
   await rename(apiDir, holdDir);
   moved = true;
+}
+if (await exists(proxyFile)) {
+  await rename(proxyFile, proxyHold);
+  movedProxy = true;
 }
 
 try {
   await runNextBuild();
 } finally {
+  if (movedProxy && (await exists(proxyHold))) await rename(proxyHold, proxyFile);
   if (moved) await rename(holdDir, apiDir);
 }

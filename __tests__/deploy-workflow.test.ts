@@ -1,6 +1,14 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 
+test("production systemd sets READ_AUTH_TOKEN and the health check uses login", () => {
+  const unit = readFileSync("deploy/read.service", "utf8");
+  const install = readFileSync("deploy/remote-install.sh", "utf8");
+  expect(unit).toContain("Environment=READ_AUTH_TOKEN=marctang33");
+  expect(install).toContain("/login");
+  expect(install).not.toContain("/api/documents?workspaceId=local");
+});
+
 test("deploy keeps the SSH secrets and publishes a Node server instead of a static export", () => {
   const yaml = readFileSync(".github/workflows/deploy.yml", "utf8");
 

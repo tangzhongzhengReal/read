@@ -83,7 +83,7 @@ as_root systemctl restart read.service
 
 healthy=0
 for _ in $(seq 1 20); do
-  if "$NODE_BIN" -e "fetch('http://127.0.0.1:${PORT}/api/documents?workspaceId=local').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"; then
+  if "$NODE_BIN" -e "fetch('http://127.0.0.1:${PORT}/login').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"; then
     healthy=1
     break
   fi

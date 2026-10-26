@@ -32,6 +32,7 @@
 
 # e2e server state
 /e2e-runtime/
+/e2e/.auth/
 
 # standalone deploy bundle
 /release/

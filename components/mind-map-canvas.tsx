@@ -419,7 +419,7 @@ export default function MindMapCanvas({ workspaceId }: { workspaceId: string }) 
           <button
             type="button"
             data-testid="add-note"
-            className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+            className="inline-flex min-h-11 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
             onClick={() => {
               void addNode("note");
             }}
@@ -429,7 +429,7 @@ export default function MindMapCanvas({ workspaceId }: { workspaceId: string }) 
           <button
             type="button"
             data-testid="add-code-node"
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium"
+            className="inline-flex min-h-11 items-center rounded-lg border border-border bg-background px-3 text-sm font-medium"
             onClick={() => {
               void addNode("code");
             }}
@@ -446,7 +446,7 @@ export default function MindMapCanvas({ workspaceId }: { workspaceId: string }) 
                   : "拖动笔记，从圆点拖到另一张卡片即可连线。"}
           </p>
         </div>
-        <div className="h-[640px] overflow-hidden rounded-xl ring-1 ring-foreground/10" data-testid="mind-canvas">
+        <div className="h-[min(70dvh,640px)] min-h-80 w-full max-w-full touch-none overflow-hidden rounded-xl ring-1 ring-foreground/10" data-testid="mind-canvas">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -459,6 +459,10 @@ export default function MindMapCanvas({ workspaceId }: { workspaceId: string }) 
             connectionRadius={48}
             deleteKeyCode={null}
             fitView={false}
+            panOnDrag
+            zoomOnPinch
+            zoomOnScroll
+            preventScrolling
           >
             <Background />
           </ReactFlow>

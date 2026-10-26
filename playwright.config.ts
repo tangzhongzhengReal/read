@@ -28,15 +28,31 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "smoke",
-      testMatch: /smoke\.spec\.ts/,
+      name: "setup",
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
+      name: "auth",
+      testMatch: /auth\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
     {
+      name: "smoke",
+      testMatch: /smoke\.spec\.ts/,
+      dependencies: ["setup"],
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/user.json",
+      },
+    },
+    {
       name: "chromium",
-      testIgnore: /smoke\.spec\.ts/,
+      testIgnore: [/smoke\.spec\.ts/, /auth\.spec\.ts/, /auth\.setup\.ts/],
       dependencies: ["smoke"],
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/user.json",
+      },
     },
   ],
 });

@@ -5,7 +5,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { EpubReader } from "@/components/epub-reader";
 import { PdfReader } from "@/components/pdf-reader";
+import { prefetchEpubRuntime } from "@/src/lib/epub/runtime";
 import { LOCAL_WORKSPACE_ID } from "@/src/lib/workspace";
+
+if (typeof window !== "undefined") {
+  void prefetchEpubRuntime();
+}
 
 export function DocumentReader() {
   const params = useSearchParams();
