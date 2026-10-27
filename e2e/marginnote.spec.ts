@@ -180,7 +180,10 @@ test("selecting pdf text opens an excerpt popover and links the card both ways",
 
   await page.getByTestId("link-mode").click();
   await page.getByTestId("link-doc-to-map").click();
-  await page.getByTestId("mind-canvas").click({ position: { x: 24, y: 300 } });
+  const canvas = page.getByTestId("mind-canvas");
+  const canvasBox = await canvas.boundingBox();
+  if (!canvasBox) throw new Error("mind canvas is missing");
+  await canvas.click({ position: { x: Math.max(8, canvasBox.width - 12), y: Math.max(8, canvasBox.height - 12) } });
   await expect(node).toHaveAttribute("data-selected", "false");
   await card.click();
   await expect(node).toHaveAttribute("data-selected", "true");
