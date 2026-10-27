@@ -103,17 +103,17 @@ export function ReviewQueue() {
 
   return (
     <div data-testid="review-page" className="min-h-svh overflow-x-clip bg-background text-foreground">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <header className="border-b border-border pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div>
             <p className="text-xs tracking-wide text-muted-foreground">今日复习</p>
             <h1 className="text-xl leading-none font-semibold">Read</h1>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Link className="inline-flex min-h-11 items-center underline" href={mapPath(workspaceId)}>
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <Link className="inline-flex min-h-11 items-center px-4 underline" href={mapPath(workspaceId)}>
               脑图
             </Link>
-            <Link className="inline-flex min-h-11 items-center underline" href={libraryPath(workspaceId)}>
+            <Link className="inline-flex min-h-11 items-center px-4 underline" href={libraryPath(workspaceId)}>
               返回文库
             </Link>
             <LogoutButton />

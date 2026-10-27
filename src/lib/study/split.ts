@@ -3,7 +3,7 @@ export type CollapsedPane = "map" | "doc" | null;
 
 export const SPLIT_MIN = 22;
 export const SPLIT_MAX = 78;
-export const SPLIT_DEFAULT = 46;
+export const SPLIT_DEFAULT = 34;
 
 export function clampSplitRatio(ratio: number): number {
   if (!Number.isFinite(ratio)) return SPLIT_DEFAULT;
@@ -22,6 +22,16 @@ export function ratioFromPointer(input: {
 
 export function paneHidden(collapsed: CollapsedPane, pane: "map" | "doc"): boolean {
   return collapsed === pane;
+}
+
+/** Collapse a pane, or restore it when that pane is already the one hidden. */
+export function togglePane(current: CollapsedPane, pane: "map" | "doc"): CollapsedPane {
+  return current === pane ? null : pane;
+}
+
+export function paneToggleLabel(collapsed: CollapsedPane, pane: "map" | "doc"): string {
+  const name = pane === "map" ? "脑图" : "文档";
+  return collapsed === pane ? `展开${name}` : `收起${name}`;
 }
 
 export function layoutForWidth(width: number): SplitLayout {

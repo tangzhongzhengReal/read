@@ -1,6 +1,17 @@
 "use client";
 
-import { useCallback, useContext, useEffect, useState, createContext, type ReactNode } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  createContext,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import {
   Handle,
   Position,
@@ -14,7 +25,7 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import { cardExtras } from "@/src/lib/excerpt/card";
-import { POPOVER_COLOR_IDS, excerptColor, titleBarColor } from "@/src/lib/excerpt/colors";
+import { POPOVER_COLOR_IDS, excerptColor, publishNodeColor, titleBarColor } from "@/src/lib/excerpt/colors";
 import { hiddenNodeIds } from "@/src/lib/mind-map/collapse";
 import { orthogonalEdgePath } from "@/src/lib/mind-map/edge-path";
 import {
@@ -34,13 +45,26 @@ type CardActions = {
   onCollapse: (id: string) => void;
   onColor: (id: string, color: number) => void;
   onTag: (id: string, tag: string) => void;
+  onRemoveTag: (id: string, tag: string) => void;
   onDelete: (id: string) => void;
   onAddChild: (id: string) => void;
   onAddSibling: (id: string) => void;
+  onRename: (id: string) => void;
+  onEdit: (id: string, patch: { text?: string; title?: string }) => void;
+  saveNotice: { id: string; label: string } | null;
+};
+
+type EditRequest = { id: string; mode: "title" | "body"; token: number };
+
+type EditApi = {
+  request: EditRequest | null;
+  queue: (id: string, mode: "title" | "body") => void;
+  consume: (token: number) => void;
 };
 
 const WorkspaceContext = createContext("local");
 const CardContext = createContext<CardActions | null>(null);
+const EditContext = createContext<EditApi | null>(null);
 const edgeKinds = ["relates", "supports", "contradicts", "child"] as const;
 
 function asFlowNode(model: FlowNodeModel): MindNode {
@@ -82,12 +106,18 @@ function CardChrome({
   type,
   selected,
   children,
+  titleNode,
+  onTitleDoubleClick,
+  saveLabel,
 }: {
   id: string;
   data: MindData;
   type: string | undefined;
   selected: boolean;
   children: ReactNode;
+  titleNode?: ReactNode;
+  onTitleDoubleClick?: () => void;
+  saveLabel?: string | null;
 }) {
   const actions = useContext(CardContext);
   const colorId = data.color ?? (type === "excerpt" ? 1 : type === "code" ? 14 : 3);
@@ -117,14 +147,26 @@ function CardChrome({
           data-testid={type === "code" ? undefined : "note-drag"}
           className={`${type === "code" ? "code-drag" : ""} min-w-0 flex-1 cursor-grab px-3 py-2`}
         >
-          <span className="block truncate text-xs font-semibold">{title}</span>
+          {titleNode ?? (
+            <span
+              data-testid="note-title"
+              className="block truncate text-xs font-semibold"
+              title="双击编辑标题"
+              onDoubleClick={(event) => {
+                event.stopPropagation();
+                onTitleDoubleClick?.();
+              }}
+            >
+              {title}
+            </span>
+          )}
         </div>
         <button
           type="button"
           data-testid="node-collapse"
           data-card-control="true"
           aria-label={data.collapsed ? "展开" : "折叠"}
-          className="nodrag nopan grid size-5 shrink-0 place-items-center rounded-full bg-white/80 text-xs font-semibold"
+          className="nodrag nopan grid size-11 shrink-0 place-items-center rounded-full bg-white/80 text-sm font-semibold"
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation();
@@ -135,6 +177,11 @@ function CardChrome({
         </button>
       </div>
       {data.collapsed ? null : children}
+      {saveLabel ? (
+        <p data-testid="note-save-status" aria-live="polite" className="px-3 pb-2 text-[11px] text-[#8E8E93]">
+          {saveLabel}
+        </p>
+      ) : null}
       <Handle type="target" position={Position.Left} data-testid="node-target" className="!size-4 !border-2 !bg-white" />
       <Handle type="source" position={Position.Right} data-testid="node-source" className="!size-4 !border-2 !bg-[#4894F3]" />
     </div>
@@ -151,22 +198,37 @@ function CardPopup({
   actions: CardActions;
 }) {
   const [tag, setTag] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   return (
     <div
       data-testid="card-popup"
       data-card-control="true"
-      className="nodrag nopan nowheel absolute top-[calc(100%+8px)] left-1/2 z-20 w-64 -translate-x-1/2 rounded-2xl bg-menu-dark p-2 text-white shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
+      className="nodrag nopan nowheel absolute top-[calc(100%+8px)] left-1/2 z-20 w-72 -translate-x-1/2 rounded-2xl bg-menu-dark p-2 text-white shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
     >
       <p className="px-1 pb-1 text-[10px] tracking-wide text-white/60">基础</p>
       <div className="flex flex-wrap gap-1">
-        <button type="button" data-testid="card-add-child" className="rounded-lg bg-white/10 px-2 py-1 text-xs" onClick={() => actions.onAddChild(nodeId)}>
+        <button type="button" data-testid="card-rename" className="inline-flex min-h-11 items-center rounded-lg bg-white/10 px-3 text-xs" onClick={() => actions.onRename(nodeId)}>
+          重命名
+        </button>
+        <button type="button" data-testid="card-add-child" className="inline-flex min-h-11 items-center rounded-lg bg-white/10 px-3 text-xs" onClick={() => actions.onAddChild(nodeId)}>
           新建子
         </button>
-        <button type="button" data-testid="card-add-sibling" className="rounded-lg bg-white/10 px-2 py-1 text-xs" onClick={() => actions.onAddSibling(nodeId)}>
+        <button type="button" data-testid="card-add-sibling" className="inline-flex min-h-11 items-center rounded-lg bg-white/10 px-3 text-xs" onClick={() => actions.onAddSibling(nodeId)}>
           新建兄弟
         </button>
-        <button type="button" data-testid="card-delete" className="rounded-lg bg-white/10 px-2 py-1 text-xs" onClick={() => actions.onDelete(nodeId)}>
-          删除
+        <button
+          type="button"
+          data-testid="card-delete"
+          className="inline-flex min-h-11 items-center rounded-lg bg-white/10 px-3 text-xs"
+          onClick={() => {
+            if (!confirmDelete) {
+              setConfirmDelete(true);
+              return;
+            }
+            actions.onDelete(nodeId);
+          }}
+        >
+          {confirmDelete ? "确认删除" : "删除"}
         </button>
       </div>
       <div className="mt-2 flex flex-wrap gap-1">
@@ -176,8 +238,9 @@ function CardPopup({
             type="button"
             data-testid="card-color"
             data-color={id}
+            data-card-control="true"
             aria-label={excerptColor(id).name}
-            className="size-5 rounded"
+            className="size-11 rounded"
             style={{
               background: excerptColor(id).hex,
               outline: colorId === id ? "2px solid #fff" : "1px solid rgba(255,255,255,.3)",
@@ -198,7 +261,7 @@ function CardPopup({
       >
         <input
           data-testid="card-tag-input"
-          className="min-w-0 flex-1 rounded-lg bg-white px-2 py-1 text-xs text-[#1C1C1E]"
+          className="min-h-11 min-w-0 flex-1 rounded-lg bg-white px-2 text-base text-[#1C1C1E] md:text-xs"
           value={tag}
           placeholder="标签"
           onChange={(event) => setTag(event.target.value)}
@@ -209,19 +272,190 @@ function CardPopup({
 }
 
 function TextNode({ id, data, type, selected }: NodeProps<MindNode>) {
+  const actions = useContext(CardContext);
+  const edit = useContext(EditContext);
+  const [mode, setMode] = useState<null | "title" | "body">(null);
+  const [draft, setDraft] = useState("");
+  const editingRef = useRef(false);
+  const openedToken = useRef(0);
+  const editorRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const isSelected = Boolean(selected);
+  const request = edit?.request ?? null;
+
+  useEffect(() => {
+    if (!request || request.id !== id || openedToken.current === request.token) return;
+    openedToken.current = request.token;
+    editingRef.current = true;
+    setDraft(request.mode === "title" ? (data.title ?? "") : (data.text ?? ""));
+    setMode(request.mode);
+    edit?.consume(request.token);
+  }, [data.text, data.title, edit, id, request]);
+
+  useEffect(() => {
+    if (!isSelected || mode) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "F2") return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+      editingRef.current = true;
+      setDraft(data.title ?? "");
+      setMode("title");
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [data.title, isSelected, mode]);
+
+  useEffect(() => {
+    if (!mode) return;
+    const node = editorRef.current;
+    node?.focus();
+    node?.scrollIntoView({ block: "center", inline: "nearest" });
+  }, [mode]);
+
+  function begin(next: "title" | "body") {
+    editingRef.current = true;
+    setDraft(next === "title" ? (data.title ?? "") : (data.text ?? ""));
+    setMode(next);
+  }
+
+  function commit(which: "title" | "body") {
+    if (!editingRef.current) return;
+    editingRef.current = false;
+    setMode(null);
+    if (which === "title") {
+      const title = draft.trim().slice(0, 250);
+      if (title === (data.title ?? "")) return;
+      actions?.onEdit(id, { title });
+      return;
+    }
+    const text = draft.trim();
+    if (!text || text === (data.text ?? "")) return;
+    actions?.onEdit(id, { text });
+  }
+
+  const editorStop = {
+    onPointerDown: (event: ReactPointerEvent) => event.stopPropagation(),
+    onMouseDown: (event: ReactMouseEvent) => event.stopPropagation(),
+  };
+
+  const titleEditor =
+    mode === "title" ? (
+      <input
+        ref={(node) => {
+          editorRef.current = node;
+        }}
+        data-testid="note-title-editor"
+        data-card-control="true"
+        className="nodrag nopan nowheel w-full rounded border-2 border-[#4894F3] bg-white px-1 py-0.5 text-xs font-semibold text-[#1C1C1E] ring-2 ring-[#4894F3]/50 caret-[#1C1C1E]"
+        value={draft}
+        autoFocus
+        placeholder="标题"
+        aria-label="标题"
+        {...editorStop}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => commit("title")}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" || event.key === "Enter") {
+            event.preventDefault();
+            event.stopPropagation();
+            commit("title");
+          }
+        }}
+      />
+    ) : undefined;
+
   return (
-    <CardChrome id={id} data={data} type={type} selected={Boolean(selected)}>
-      <div className="px-3 py-2">
-        <p className="pointer-events-none whitespace-pre-wrap">{data.text}</p>
+    <CardChrome
+      id={id}
+      data={data}
+      type={type}
+      selected={isSelected}
+      titleNode={titleEditor}
+      onTitleDoubleClick={() => begin("title")}
+      saveLabel={actions?.saveNotice?.id === id ? actions.saveNotice.label : null}
+    >
+      <div className="nowheel nopan max-h-40 overflow-y-auto px-3 py-2">
+        {mode === "body" ? (
+          <div className="flex flex-col gap-1">
+            <textarea
+              ref={(node) => {
+                editorRef.current = node;
+              }}
+              data-testid="note-editor"
+              data-card-control="true"
+              className="nodrag nopan nowheel h-24 w-full resize-none rounded border-2 border-[#4894F3] bg-white p-1 text-base ring-2 ring-[#4894F3]/50 caret-[#1C1C1E] md:text-sm"
+              value={draft}
+              autoFocus
+              placeholder="写点什么…"
+              aria-label="正文"
+              {...editorStop}
+              onChange={(event) => setDraft(event.target.value)}
+              onBlur={() => commit("body")}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  commit("body");
+                }
+                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                  event.preventDefault();
+                  commit("body");
+                }
+              }}
+            />
+            <button
+              type="button"
+              data-testid="note-save"
+              data-card-control="true"
+              className="nodrag nopan ml-auto inline-flex min-h-11 items-center rounded-lg bg-[#4894F3] px-3 text-xs font-medium text-white"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => commit("body")}
+            >
+              保存
+            </button>
+          </div>
+        ) : (
+          <p
+            data-testid="note-body"
+            className={`cursor-text whitespace-pre-wrap ${data.text ? "" : "text-[#8E8E93]"}`}
+            title="双击编辑正文"
+            onDoubleClick={(event) => {
+              event.stopPropagation();
+              begin("body");
+            }}
+          >
+            {data.text || "写点什么…"}
+          </p>
+        )}
         {data.comment ? (
           <p data-testid="node-comment" className="mt-1 text-xs text-[#8E8E93]">
             {data.comment}
           </p>
         ) : null}
         {data.tags && data.tags.length > 0 ? (
-          <p data-testid="node-tags" className="mt-1 text-xs text-[#2F6FEB]">
-            {data.tags.map((tag) => `#${tag}`).join(" ")}
-          </p>
+          <div data-testid="node-tags" className="mt-1 flex flex-wrap gap-1 text-xs text-[#2F6FEB]">
+            {data.tags.map((tag) => (
+              <span key={tag} className="inline-flex items-center rounded-full bg-[#E8F1FE] pl-2">
+                #{tag}
+                <button
+                  type="button"
+                  data-testid="tag-remove"
+                  data-tag={tag}
+                  data-card-control="true"
+                  aria-label={`移除${tag}`}
+                  className="nodrag nopan inline-flex min-h-11 min-w-11 items-center justify-center"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    actions?.onRemoveTag(id, tag);
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
         ) : null}
       </div>
     </CardChrome>
@@ -388,6 +622,21 @@ export default function MindMapCanvas({
   const [error, setError] = useState<string | null>(null);
   const [mapState, setMapState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<{ id: string; label: string } | null>(null);
+  const [editRequest, setEditRequest] = useState<EditRequest | null>(null);
+  const editSeq = useRef(0);
+  const queueEdit = useCallback((id: string, mode: "title" | "body") => {
+    editSeq.current += 1;
+    setSelectedId(id);
+    setEditRequest({ id, mode, token: editSeq.current });
+  }, []);
+  const consumeEdit = useCallback((token: number) => {
+    setEditRequest((current) => (current?.token === token ? null : current));
+  }, []);
+  const editApi = useMemo<EditApi>(
+    () => ({ request: editRequest, queue: queueEdit, consume: consumeEdit }),
+    [consumeEdit, editRequest, queueEdit],
+  );
   const [appliedFocus, setAppliedFocus] = useState(0);
   if (
     focusToken !== 0 &&
@@ -428,22 +677,30 @@ export default function MindMapCanvas({
     setNodes((current) => applyNodeChanges(changes, current));
   }, []);
 
-  async function patchNode(id: string, patch: Partial<MindData>) {
+  async function patchNode(id: string, patch: Partial<MindData>, announce = false) {
     const current = nodes.find((node) => node.id === id);
     if (!current) return;
     const nextData = { ...current.data, ...patch };
+    if ("title" in patch) {
+      const title = typeof patch.title === "string" ? patch.title.trim().slice(0, 250) : "";
+      nextData.title = title || undefined;
+    }
     setMapState("saving");
+    if (announce) setSaveNotice({ id, label: "保存中…" });
     const response = await fetch(`/api/nodes/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ workspaceId, payload: payloadFrom(current.data, patch) }),
+      body: JSON.stringify({ workspaceId, payload: payloadFrom(current.data, nextData) }),
     });
     if (!response.ok) {
       setMapState("error");
+      if (announce) setSaveNotice({ id, label: "保存失败" });
       return;
     }
     setNodes((items) => items.map((item) => (item.id === id ? { ...item, data: nextData } : item)));
     setMapState("saved");
+    if (announce) setSaveNotice({ id, label: "已保存" });
+    if ("color" in patch && typeof nextData.color === "number") publishNodeColor(id, nextData.color);
   }
 
   async function addNode(type: "note" | "code") {
@@ -470,6 +727,7 @@ export default function MindMapCanvas({
     }
     setNodes((current) => [...current, asFlowNode(model)]);
     setMapState("saved");
+    if (type === "note") queueEdit(model.id, "body");
   }
 
   async function addRelative(id: string, kind: "child" | "sibling") {
@@ -507,6 +765,7 @@ export default function MindMapCanvas({
       return;
     }
     setNodes((current) => [...current, asFlowNode(model)]);
+    queueEdit(model.id, "body");
     if (!fromId) {
       setMapState("saved");
       return;
@@ -641,9 +900,17 @@ export default function MindMapCanvas({
       if (!tags.includes(tag)) tags.push(tag);
       void patchNode(id, { tags });
     },
+    onRemoveTag: (id, tag) => {
+      const node = nodes.find((item) => item.id === id);
+      if (!node) return;
+      void patchNode(id, { tags: (node.data.tags ?? []).filter((item) => item !== tag) });
+    },
     onDelete: (id) => void deleteNode(id),
     onAddChild: (id) => void addRelative(id, "child"),
     onAddSibling: (id) => void addRelative(id, "sibling"),
+    onRename: (id) => queueEdit(id, "title"),
+    onEdit: (id, patch) => void patchNode(id, patch, true),
+    saveNotice,
   };
 
   if (error) {
@@ -659,8 +926,9 @@ export default function MindMapCanvas({
   return (
     <WorkspaceContext.Provider value={workspaceId}>
       <CardContext.Provider value={actions}>
+        <EditContext.Provider value={editApi}>
         <div className={fill ? "flex h-full min-h-0 flex-col gap-2 px-2 pt-1 pb-2" : "flex flex-col gap-4"}>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="order-3 flex flex-wrap items-center gap-2 md:order-1">
             <button
               type="button"
               data-testid="add-note"
@@ -678,11 +946,14 @@ export default function MindMapCanvas({
               新建代码
             </button>
             <p data-testid="map-status" data-state={mapState} className="text-xs text-[#8E8E93]">
-              {mapState === "saving" ? "保存中…" : mapState === "saved" ? "已保存" : mapState === "error" ? "保存失败" : "拖动卡片，从圆点连到另一张。"}
+              拖动卡片，从圆点连到另一张。
+              {mapState === "idle" ? null : (
+                <span className="ml-2">{mapState === "saving" ? "保存中…" : mapState === "saved" ? "已保存" : "保存失败"}</span>
+              )}
             </p>
           </div>
           <div
-            className={`w-full max-w-full touch-none overflow-hidden bg-[#F2F2F2] ${fill ? "min-h-80 flex-1" : "h-[min(70dvh,640px)] min-h-80 rounded-xl"}`}
+            className={`relative order-1 w-full max-w-full touch-none overflow-hidden bg-[#F2F2F2] md:order-2 ${fill ? "min-h-0 flex-1" : "h-[min(70dvh,640px)] min-h-80 rounded-xl"}`}
             data-testid="mind-canvas"
           >
             <ReactFlow
@@ -716,7 +987,7 @@ export default function MindMapCanvas({
               style={{ background: "#F2F2F2" }}
             />
           </div>
-          <ul className={`flex flex-col gap-2 ${fill ? "max-h-24 overflow-auto" : ""}`} data-testid="edge-list">
+          <ul className={`order-2 flex flex-col gap-2 md:order-3 ${fill ? "max-h-24 overflow-auto" : ""}`} data-testid="edge-list">
             {edges.map((edge) => {
               const kind = edge.data?.kind ?? "relates";
               const options = edgeKinds.includes(kind as (typeof edgeKinds)[number]) ? edgeKinds : [...edgeKinds, kind];
@@ -750,6 +1021,7 @@ export default function MindMapCanvas({
             })}
           </ul>
         </div>
+        </EditContext.Provider>
       </CardContext.Provider>
     </WorkspaceContext.Provider>
   );

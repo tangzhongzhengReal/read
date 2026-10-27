@@ -38,6 +38,13 @@ export function titleBarColor(hex: string): string {
   return `color-mix(in srgb, ${hex} 42%, white)`;
 }
 
+export const NODE_COLOR_EVENT = "read:node-color";
+
+export function publishNodeColor(id: string, color: number) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(NODE_COLOR_EVENT, { detail: { id, color } }));
+}
+
 export function highlightPresentation(input: {
   color?: number;
   highlight?: HighlightMode;

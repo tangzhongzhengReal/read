@@ -3,7 +3,13 @@ import { expect, test } from "@playwright/test";
 test("dragging a note and connecting an edge persists after refresh", async ({ page }) => {
   await page.goto("/map?workspaceId=e2e-map");
   await page.getByTestId("add-note").click();
+  const firstEditor = page.getByTestId("note-editor");
+  await expect(firstEditor).toBeVisible();
+  await firstEditor.press("Escape");
   await page.getByTestId("add-note").click();
+  const secondEditor = page.getByTestId("note-editor");
+  await expect(secondEditor).toBeVisible();
+  await secondEditor.press("Escape");
   const notes = page.getByTestId("mind-node");
   await expect(notes).toHaveCount(2);
 

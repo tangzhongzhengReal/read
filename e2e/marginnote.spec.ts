@@ -80,13 +80,40 @@ test("study workspace splits, drags, collapses, and stacks on a phone", async ({
   await page.getByTestId("collapse-doc").click();
   await expect(page.getByTestId("doc-pane")).toBeHidden();
   await expect(workspace).toHaveAttribute("data-collapsed", "doc");
+  await expect(page.getByTestId("collapse-doc")).toHaveAttribute("aria-label", "展开文档");
+  await expect(page.getByTestId("collapse-doc")).toHaveText("展开文档");
+  await shot(page, "doc-collapsed.png");
   await page.getByTestId("collapse-doc").click();
   await expect(page.getByTestId("doc-pane")).toBeVisible();
+  await expect(page.getByTestId("collapse-doc")).toHaveAttribute("aria-label", "收起文档");
+  await expect(page.getByTestId("collapse-doc")).toHaveText("收起文档");
+  await shot(page, "doc-expanded.png");
 
   await page.getByTestId("collapse-map").click();
   await expect(page.getByTestId("mind-pane")).toBeHidden();
+  await expect(page.getByTestId("collapse-map")).toHaveAttribute("aria-label", "展开脑图");
+  await expect(page.getByTestId("collapse-map")).toHaveText("展开脑图");
+  await shot(page, "map-collapsed.png");
   await page.getByTestId("collapse-map").click();
   await expect(page.getByTestId("mind-pane")).toBeVisible();
+  await expect(page.getByTestId("collapse-map")).toHaveAttribute("aria-label", "收起脑图");
+  await expect(page.getByTestId("collapse-map")).toHaveText("收起脑图");
+  await shot(page, "map-expanded.png");
+
+  await page.getByTestId("link-mode").click();
+  const linkMenu = page.getByTestId("link-mode-menu");
+  await expect(linkMenu).toBeVisible();
+  const menuBox = await linkMenu.boundingBox();
+  const docToggleBox = await page.getByTestId("collapse-doc").boundingBox();
+  if (!menuBox || !docToggleBox) throw new Error("link menu or collapse control is missing");
+  const overlapsDocToggle =
+    menuBox.y < docToggleBox.y + docToggleBox.height &&
+    menuBox.y + menuBox.height > docToggleBox.y &&
+    menuBox.x < docToggleBox.x + docToggleBox.width &&
+    menuBox.x + menuBox.width > docToggleBox.x;
+  expect(overlapsDocToggle).toBe(false);
+  await page.keyboard.press("Escape");
+  await expect(linkMenu).toBeHidden();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(workspace).toHaveAttribute("data-layout", "stack");
@@ -131,6 +158,10 @@ test("selecting pdf text opens an excerpt popover and links the card both ways",
 
   const node = page.getByTestId("mind-node").filter({ hasText: SAMPLE_PAGE_TWO });
   await expect(node).toHaveAttribute("data-selected", "true");
+  await node.locator("[data-testid='card-color'][data-color='2']").click();
+  await expect(node).toHaveAttribute("data-color", "2");
+  await expect(highlight).toHaveAttribute("data-color", "2");
+  await expect(node).toHaveAttribute("data-selected", "true");
 
   await page.getByRole("button", { name: "上一页" }).click();
   await expect(page.getByTestId("reader-current-page")).toHaveText("1");
@@ -141,6 +172,7 @@ test("selecting pdf text opens an excerpt popover and links the card both ways",
   await page.getByTestId("link-mode").click();
   await page.getByTestId("link-off").click();
   await expect(page.getByTestId("study-workspace")).toHaveAttribute("data-link-mode", "off");
+  await expect(page.getByTestId("link-hint")).toHaveText("联动：关闭");
   await page.getByRole("button", { name: "上一页" }).click();
   await expect(page.getByTestId("reader-current-page")).toHaveText("1");
   await node.click();
@@ -148,7 +180,10 @@ test("selecting pdf text opens an excerpt popover and links the card both ways",
 
   await page.getByTestId("link-mode").click();
   await page.getByTestId("link-doc-to-map").click();
-  await page.getByTestId("mind-canvas").click({ position: { x: 24, y: 300 } });
+  const canvas = page.getByTestId("mind-canvas");
+  const canvasBox = await canvas.boundingBox();
+  if (!canvasBox) throw new Error("mind canvas is missing");
+  await canvas.click({ position: { x: Math.max(8, canvasBox.width - 12), y: Math.max(8, canvasBox.height - 12) } });
   await expect(node).toHaveAttribute("data-selected", "false");
   await card.click();
   await expect(node).toHaveAttribute("data-selected", "true");
@@ -217,6 +252,9 @@ test("a selected mind-map card shows a dark menu, child edge, color, and tag", a
   await page.goto("/map?workspaceId=e2e-mn");
   await expect(page.getByTestId("mind-canvas")).toHaveCSS("background-color", "rgb(242, 242, 242)");
   await page.getByTestId("add-note").click();
+  const freshNote = page.getByTestId("note-editor");
+  await expect(freshNote).toHaveValue("笔记 1");
+  await freshNote.press("Escape");
   const named = page.getByTestId("mind-node").filter({ hasText: "笔记 1" });
   await expect(named).toBeVisible();
   const parentId = await named.getAttribute("data-node-id");
@@ -231,10 +269,14 @@ test("a selected mind-map card shows a dark menu, child edge, color, and tag", a
   await expect(popup.getByTestId("card-add-child")).toBeVisible();
   await expect(popup.getByTestId("card-add-sibling")).toBeVisible();
   await expect(popup.getByTestId("card-delete")).toBeVisible();
+  await expect(popup.getByTestId("card-rename")).toBeVisible();
   await expect(popup.getByTestId("card-color")).toHaveCount(8);
   await shot(page, "card-selected-desktop.png");
 
   await popup.getByTestId("card-add-child").click();
+  const childEditor = page.getByTestId("note-editor");
+  await expect(childEditor).toHaveValue("子卡片");
+  await childEditor.press("Escape");
   const child = page.getByTestId("mind-node").filter({ hasText: "子卡片" });
   await expect(child).toBeVisible();
   await expect(page.getByTestId("edge-kind")).toHaveValue("child");
@@ -254,11 +296,39 @@ test("a selected mind-map card shows a dark menu, child edge, color, and tag", a
   await popup.getByTestId("card-tag-input").fill("定理");
   await popup.getByTestId("card-tag-input").press("Enter");
   await expect(parent.getByTestId("node-tags")).toContainText("#定理");
+  await parent.getByTestId("tag-remove").click();
+  await expect(parent.getByTestId("node-tags")).toHaveCount(0);
 
   await child.click();
-  await page.getByTestId("card-popup").getByTestId("card-delete").click();
+  const deleteCard = page.getByTestId("card-popup").getByTestId("card-delete");
+  await deleteCard.click();
+  await expect(deleteCard).toHaveText("确认删除");
+  await expect(child).toHaveCount(1);
+  await deleteCard.click();
   await expect(child).toHaveCount(0);
   await expect(page.getByTestId("mind-edge")).toHaveCount(0);
+
+  await parent.click();
+  await page.keyboard.press("F2");
+  const titleFromKey = page.getByTestId("note-title-editor");
+  await expect(titleFromKey).toBeVisible();
+  await titleFromKey.press("Escape");
+  await expect(titleFromKey).toHaveCount(0);
+  const editor = page.getByTestId("note-editor");
+  await parent.getByTestId("note-body").dblclick();
+  await expect(editor).toBeVisible();
+  await editor.fill("笔记已改");
+  await shot(page, "note-editing.png");
+  await page.getByTestId("note-save").click();
+  await expect(parent).toContainText("笔记已改");
+  await expect(parent.getByTestId("note-save-status")).toHaveText("已保存");
+  await shot(page, "note-saved.png");
+  await parent.getByTestId("note-title").dblclick();
+  const titleEditor = page.getByTestId("note-title-editor");
+  await expect(titleEditor).toBeVisible();
+  await titleEditor.fill("定理卡");
+  await titleEditor.press("Enter");
+  await expect(parent).toContainText("定理卡");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await parent.click();

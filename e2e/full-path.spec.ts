@@ -50,6 +50,9 @@ test("workspace, document, excerpt, edge, review, and optional code run survive 
   await expect(page.getByTestId("mind-node")).toHaveCount(1);
   await expect(page.getByTestId("mind-node")).toContainText(SAMPLE_PAGE_TWO);
   await page.getByTestId("add-note").click();
+  const noteEditor = page.getByTestId("note-editor");
+  await expect(noteEditor).toBeVisible();
+  await noteEditor.press("Escape");
   await expect(page.getByTestId("mind-node")).toHaveCount(2);
   const notes = page.getByTestId("mind-node");
   await notes.nth(0).getByTestId("node-source").dragTo(notes.nth(1).getByTestId("node-target"));

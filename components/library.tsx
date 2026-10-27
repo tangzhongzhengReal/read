@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpen, Folder, Library as LibraryIcon, Plus, RotateCcw } from "lucide-react";
+import { BookOpen, Folder, Library as LibraryIcon, Menu, Plus, RotateCcw } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import { LOCAL_WORKSPACE_ID, mapPath, reviewPath, studyPath } from "@/src/lib/workspace";
 
@@ -30,6 +30,18 @@ export function Library() {
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [section, setSection] = useState<"sets" | "docs">("docs");
+  const [navOpen, setNavOpen] = useState(false);
+
+  useEffect(() => {
+    if (!navOpen) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setNavOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,8 +103,31 @@ export function Library() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col bg-canvas text-[#1C1C1E] md:flex-row">
-      <aside data-testid="library-sidebar" className="flex w-full shrink-0 flex-col bg-surface md:min-h-svh md:w-60">
+    <div className="relative flex min-h-svh flex-col overflow-x-clip bg-canvas text-[#1C1C1E] md:flex-row">
+      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-[#EFEFEF] bg-white px-2 pt-[max(0.25rem,env(safe-area-inset-top))] pb-1 md:hidden">
+        <button
+          type="button"
+          data-testid="library-menu"
+          aria-label="打开导航"
+          className="grid size-11 place-items-center rounded-lg"
+          onClick={() => setNavOpen(true)}
+        >
+          <Menu className="size-5" strokeWidth={1.75} />
+        </button>
+        <p className="text-base font-semibold">Read</p>
+      </header>
+      {navOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          aria-label="关闭导航"
+          onClick={() => setNavOpen(false)}
+        />
+      ) : null}
+      <aside
+        data-testid="library-sidebar"
+        className={`fixed inset-y-0 left-0 z-40 flex h-dvh w-72 max-w-[85vw] shrink-0 flex-col overflow-y-auto bg-surface shadow-xl transition-transform md:static md:z-auto md:h-auto md:min-h-svh md:w-60 md:max-w-none md:translate-x-0 md:shadow-none ${navOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
         <div className="flex items-center gap-2 px-4 py-4">
           <div className="grid size-8 place-items-center rounded-lg bg-brand text-sm font-semibold text-white">R</div>
           <h1 className="text-lg leading-none font-semibold tracking-tight">Read</h1>
@@ -110,7 +145,7 @@ export function Library() {
             <p className="px-2 pb-1 text-xs text-[#9A9A9A]">学习集</p>
             <button
               type="button"
-              className={`flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left ${section === "sets" ? "bg-surface-sel text-[#2F6FEB]" : "text-[#1C1C1E]"}`}
+              className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left ${section === "sets" ? "bg-surface-sel text-[#2F6FEB]" : "text-[#1C1C1E]"}`}
               onClick={() => setSection("sets")}
             >
               <LibraryIcon className="size-4 text-icon" strokeWidth={1.75} />
@@ -119,12 +154,12 @@ export function Library() {
             <Link
               data-testid="open-study-set"
               href={studyPath(workspaceId)}
-              className="flex min-h-10 items-center gap-2 rounded-lg px-2"
+              className="flex min-h-11 items-center gap-2 rounded-lg px-2"
             >
               <BookOpen className="size-4 text-icon" strokeWidth={1.75} />
               进入学习集
             </Link>
-            <Link data-testid="open-mind-map" href={mapPath(workspaceId)} className="flex min-h-10 items-center gap-2 rounded-lg px-2">
+            <Link data-testid="open-mind-map" href={mapPath(workspaceId)} className="flex min-h-11 items-center gap-2 rounded-lg px-2" onClick={() => setNavOpen(false)}>
               脑图
             </Link>
             <form
@@ -172,7 +207,7 @@ export function Library() {
             <p className="px-2 pb-1 text-xs text-[#9A9A9A]">文档</p>
             <button
               type="button"
-              className={`flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left ${section === "docs" ? "bg-surface-sel text-[#2F6FEB]" : ""}`}
+              className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left ${section === "docs" ? "bg-surface-sel text-[#2F6FEB]" : ""}`}
               onClick={() => setSection("docs")}
             >
               分类
@@ -185,7 +220,7 @@ export function Library() {
           </section>
           <section data-testid="library-section-review">
             <p className="px-2 pb-1 text-xs text-[#9A9A9A]">复习</p>
-            <Link data-testid="open-review" href={reviewPath(workspaceId)} className="flex min-h-10 items-center gap-2 rounded-lg px-2">
+            <Link data-testid="open-review" href={reviewPath(workspaceId)} className="flex min-h-11 items-center gap-2 rounded-lg px-2" onClick={() => setNavOpen(false)}>
               <RotateCcw className="size-4 text-icon" strokeWidth={1.75} />
               复习卡片组
             </Link>
@@ -195,7 +230,7 @@ export function Library() {
           <LogoutButton />
         </div>
       </aside>
-      <main className="min-w-0 flex-1 px-4 py-5 sm:px-8">
+      <main className="min-w-0 flex-1 px-4 py-5 pb-24 sm:px-8 md:pb-5">
         <h2 className="text-center text-base font-medium">{section === "sets" ? "学习集" : "文档"}</h2>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-[#8E8E93]">{section === "sets" ? "学习集库" : "全部"}</p>
@@ -302,6 +337,33 @@ export function Library() {
           </ul>
         )}
       </main>
+      <nav
+        data-testid="library-tabs"
+        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-[#EFEFEF] bg-white md:hidden pb-[max(0.25rem,env(safe-area-inset-bottom))]"
+      >
+        <button
+          type="button"
+          aria-current={section === "docs" ? "page" : undefined}
+          className={`inline-flex min-h-11 flex-1 items-center justify-center text-sm font-medium ${section === "docs" ? "text-[#2F6FEB]" : "text-[#67707D]"}`}
+          onClick={() => setSection("docs")}
+        >
+          文档
+        </button>
+        <button
+          type="button"
+          aria-current={section === "sets" ? "page" : undefined}
+          className={`inline-flex min-h-11 flex-1 items-center justify-center text-sm font-medium ${section === "sets" ? "text-[#2F6FEB]" : "text-[#67707D]"}`}
+          onClick={() => setSection("sets")}
+        >
+          学习集
+        </button>
+        <Link
+          href={reviewPath(workspaceId)}
+          className="inline-flex min-h-11 flex-1 items-center justify-center text-sm font-medium text-[#67707D]"
+        >
+          复习
+        </Link>
+      </nav>
     </div>
   );
 }
