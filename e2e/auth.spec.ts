@@ -31,6 +31,7 @@ test("wrong token is rejected and the right token can create a workspace", async
   expect(session?.value ?? "").not.toContain(authToken);
   expect(await page.evaluate(() => Object.keys(localStorage))).toEqual([]);
 
+  await page.getByTestId("library-menu").click();
   await page.getByTestId("workspace-name").fill("mobile-auth");
   await page.getByTestId("create-workspace").click();
   await expect(page.getByTestId("workspace-title")).toHaveText("mobile-auth");

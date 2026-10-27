@@ -104,13 +104,6 @@ export function StudyWorkspace() {
   }, [linkOpen]);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      window.dispatchEvent(new Event("resize"));
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [collapsed, narrow, mobilePane]);
-
-  useEffect(() => {
     let cancelled = false;
     fetch(`/api/documents?workspaceId=${encodeURIComponent(workspaceId)}`)
       .then(async (response) => {

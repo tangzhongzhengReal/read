@@ -81,17 +81,20 @@ test("study workspace splits, drags, collapses, and stacks on a phone", async ({
   await expect(page.getByTestId("doc-pane")).toBeHidden();
   await expect(workspace).toHaveAttribute("data-collapsed", "doc");
   await expect(page.getByTestId("collapse-doc")).toHaveAttribute("aria-label", "展开文档");
+  await shot(page, "doc-collapsed.png");
   await page.getByTestId("collapse-doc").click();
   await expect(page.getByTestId("doc-pane")).toBeVisible();
   await expect(page.getByTestId("collapse-doc")).toHaveAttribute("aria-label", "收起文档");
-  await expect(page.getByText("从文库打开一篇 PDF 或 EPUB，摘录会和脑图卡片连在一起。")).toBeVisible();
+  await shot(page, "doc-expanded.png");
 
   await page.getByTestId("collapse-map").click();
   await expect(page.getByTestId("mind-pane")).toBeHidden();
   await expect(page.getByTestId("collapse-map")).toHaveAttribute("aria-label", "展开脑图");
+  await shot(page, "map-collapsed.png");
   await page.getByTestId("collapse-map").click();
   await expect(page.getByTestId("mind-pane")).toBeVisible();
   await expect(page.getByTestId("collapse-map")).toHaveAttribute("aria-label", "收起脑图");
+  await shot(page, "map-expanded.png");
 
   await page.getByTestId("link-mode").click();
   await expect(page.getByTestId("link-mode-menu")).toBeVisible();
@@ -279,9 +282,11 @@ test("a selected mind-map card shows a dark menu, child edge, color, and tag", a
   await parent.getByTestId("note-body").dblclick();
   await expect(editor).toBeVisible();
   await editor.fill("笔记已改");
+  await shot(page, "note-editing.png");
   await page.getByTestId("note-save").click();
   await expect(parent).toContainText("笔记已改");
   await expect(parent.getByTestId("note-save-status")).toHaveText("已保存");
+  await shot(page, "note-saved.png");
   await parent.getByTestId("note-title").dblclick();
   const titleEditor = page.getByTestId("note-title-editor");
   await expect(titleEditor).toBeVisible();

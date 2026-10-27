@@ -374,21 +374,21 @@ export function EpubReader({
         </div>
       </header>
       <main className={embedded ? "flex min-h-0 min-w-0 flex-1 flex-col" : "mx-auto grid min-w-0 max-w-7xl gap-6 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_16rem]"}>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {error ? (
-            <p role="alert" data-testid="reader-error" className="mb-4 text-sm text-destructive">
+            <p role="alert" data-testid="reader-error" className="pointer-events-none absolute inset-x-0 top-0 z-10 bg-white/90 px-3 py-2 text-sm text-destructive">
               {error}
             </p>
           ) : null}
           {!ready && !error ? (
-            <p data-testid="epub-loading" data-stage={stage} className="mb-3 text-sm text-[#8E8E93]">
+            <p data-testid="epub-loading" data-stage={stage} className="pointer-events-none absolute inset-x-0 top-0 z-10 bg-white/90 px-3 py-2 text-sm text-[#8E8E93]">
               {epubStageLabel(stage, progress)}
             </p>
           ) : null}
           <div
             ref={viewerRef}
             data-testid="epub-viewer"
-            className={embedded ? "h-full min-h-48 w-full max-w-full flex-1 overflow-hidden bg-white" : "h-[min(70dvh,40rem)] min-h-64 w-full max-w-full overflow-hidden bg-white"}
+            className={embedded ? "min-h-0 w-full max-w-full flex-1 overflow-hidden bg-white" : "h-[min(70dvh,40rem)] min-h-64 w-full max-w-full overflow-hidden bg-white"}
           />
         </div>
         <aside className={embedded ? "max-h-36 min-h-0 w-full min-w-0 shrink-0 overflow-x-hidden overflow-y-auto border-t border-[#EFEFEF] bg-white" : "min-w-0 space-y-3"}>
