@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { NodeSchema } from "@/src/lib/models";
 import { getNodeStore, resetNodeStores } from "@/src/lib/store/nodes";
 import { GET } from "../route";
-import { PATCH } from "./route";
+import { DELETE, PATCH } from "./route";
 
 let dataDir = "";
 
@@ -112,6 +112,18 @@ test("a code payload can be replaced and a missing node is 404", async () => {
     position: { x: 1, y: 2 },
   });
   expect(missing.status).toBe(404);
+});
+
+test("deleting a node hides it from later reads", async () => {
+  await seedExcerpt();
+  const response = await DELETE(
+    new NextRequest("http://localhost/api/nodes/excerpt-1?workspaceId=ws-1", { method: "DELETE" }),
+    { params: Promise.resolve({ id: "excerpt-1" }) },
+  );
+  expect(response.status).toBe(204);
+  const listed = await GET(new NextRequest("http://localhost/api/nodes?workspaceId=ws-1"));
+  const body = (await listed.json()) as { nodes: Array<{ id: string }> };
+  expect(body.nodes).toEqual([]);
 });
 
 test("an empty patch and an invalid position are rejected", async () => {

@@ -86,13 +86,37 @@ export const ExcerptAnchorSchema = z.union([
   EpubExcerptAnchorSchema,
 ]);
 
+const cardFieldShape = {
+  title: z.string().trim().max(250).optional(),
+  comment: z.string().trim().max(4000).optional(),
+  color: z.number().int().min(1).max(16).optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
+  highlight: z.enum(["fill", "underline"]).optional(),
+  collapsed: z.boolean().optional(),
+  asTitle: z.boolean().optional(),
+};
+
+export const notePayloadSchema = z.object({
+  text: z.string().trim().min(1),
+  ...cardFieldShape,
+});
+
+export const codePayloadSchema = z.object({
+  language: z.enum(["javascript", "python", "go"]),
+  source: z.string().max(20_000),
+  ...cardFieldShape,
+});
+
+export const excerptPayloadSchema = z.object({
+  text: z.string().trim().min(1),
+  ...cardFieldShape,
+});
+
 export const ExcerptCreateSchema = z.object({
   workspaceId: z.string().min(1),
   documentId: z.string().min(1),
   type: z.literal("excerpt"),
-  payload: z.object({
-    text: z.string().trim().min(1),
-  }),
+  payload: excerptPayloadSchema,
   anchor: ExcerptAnchorSchema,
 });
 
@@ -111,19 +135,14 @@ export const positionSchema = z.object({
 export const NoteCreateSchema = z.object({
   workspaceId: z.string().min(1),
   type: z.literal("note"),
-  payload: z.object({
-    text: z.string().trim().min(1),
-  }),
+  payload: notePayloadSchema,
   position: positionSchema.optional(),
 });
 
 export const CodeNodeCreateSchema = z.object({
   workspaceId: z.string().min(1),
   type: z.literal("code"),
-  payload: z.object({
-    language: z.enum(["javascript", "python", "go"]),
-    source: z.string().max(20_000),
-  }),
+  payload: codePayloadSchema,
   position: positionSchema.optional(),
 });
 
@@ -197,19 +216,6 @@ export const ReviewUpdateSchema = z.object({
 
 export const WorkspaceCreateSchema = z.object({
   name: z.string().trim().min(1).max(80),
-});
-
-export const notePayloadSchema = z.object({
-  text: z.string().trim().min(1),
-});
-
-export const codePayloadSchema = z.object({
-  language: z.enum(["javascript", "python", "go"]),
-  source: z.string().max(20_000),
-});
-
-export const excerptPayloadSchema = z.object({
-  text: z.string().trim().min(1),
 });
 
 export type Workspace = z.infer<typeof WorkspaceSchema>;

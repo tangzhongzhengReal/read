@@ -59,6 +59,28 @@ export async function PATCH(
   return Response.json({ node });
 }
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const workspaceRaw = request.nextUrl.searchParams.get("workspaceId");
+  if (!workspaceRaw) {
+    return Response.json({ error: "workspaceId is required" }, { status: 400 });
+  }
+  let workspaceId: string;
+  try {
+    workspaceId = assertWorkspaceId(workspaceRaw);
+  } catch (error) {
+    return invalidWorkspace(error);
+  }
+  const store = getNodeStore(workspaceId);
+  const current = await store.get(id);
+  if (!current) return Response.json({ error: "node not found" }, { status: 404 });
+  await store.softDelete(id);
+  return new Response(null, { status: 204 });
+}
+
 function payloadFor(type: Node["type"], payload: Record<string, unknown>): Record<string, unknown> | null {
   if (type === "note") {
     const parsed = notePayloadSchema.safeParse(payload);

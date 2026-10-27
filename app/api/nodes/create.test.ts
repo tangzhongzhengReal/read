@@ -75,6 +75,28 @@ test("a note and a code node are stored and listed with excerpts for one workspa
   expect(raw).toContain("print(1+1)");
 });
 
+test("an excerpt keeps color, title, and underline style", async () => {
+  const response = await post({
+    workspaceId: "ws-1",
+    documentId: "doc-1",
+    type: "excerpt",
+    payload: { text: "quoted", title: "标题", color: 4, highlight: "underline", asTitle: true, tags: ["定义"] },
+    anchor: { page: 2, rects: [{ x: 0.1, y: 0.2, width: 0.3, height: 0.05 }] },
+  });
+  expect(response.status).toBe(201);
+  const body = (await response.json()) as {
+    node: { payload: { text: string; color: number; asTitle: boolean; tags: string[] } };
+  };
+  expect(body.node.payload).toMatchObject({
+    text: "quoted",
+    title: "标题",
+    color: 4,
+    highlight: "underline",
+    asTitle: true,
+    tags: ["定义"],
+  });
+});
+
 test("a code node with an unknown language is rejected", async () => {
   const response = await post({
     workspaceId: "ws-1",
