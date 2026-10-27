@@ -167,9 +167,8 @@ export function StudyWorkspace({ workspaceId }: { workspaceId: string }) {
           <Link href={libraryPath(workspaceId)} className="shrink-0 rounded-full px-3 py-2 text-[#67707D]">
             文库
           </Link>
-          <span className="shrink-0 rounded-full bg-brand-soft px-3 py-1.5 font-medium text-[#2F6FEB]">脑图</span>
+          <span className="shrink-0 rounded-full bg-brand-soft px-3 py-1.5 font-medium text-[#2F6FEB]">文档</span>
           <span className="shrink-0 px-1 text-[#C5C5C7]">|</span>
-          <span className="shrink-0 rounded-full px-3 py-1.5">文档</span>
           <Link data-testid="open-mind-map" href={mapPath(workspaceId)} className="shrink-0 rounded-full px-3 py-2 text-[#67707D]">
             脑图
           </Link>

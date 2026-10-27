@@ -172,10 +172,10 @@ test("selecting pdf text opens an excerpt popover and links the card both ways",
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByTestId("study-workspace")).toHaveAttribute("data-layout", "stack");
+  await shot(page, "workspace-pdf-phone.png");
   await page.getByTestId("pdf-text-layer").locator("span", { hasText: SAMPLE_PAGE_ONE }).selectText();
   await expect(popover).toBeVisible();
   await shot(page, "excerpt-popover-phone.png");
-  await shot(page, "workspace-pdf-phone.png");
 });
 
 test("epub excerpts locate from the mind map with a cfi", async ({ page }) => {
@@ -217,8 +217,11 @@ test("a selected mind-map card shows a dark menu, child edge, color, and tag", a
   await page.goto("/map?workspaceId=e2e-mn");
   await expect(page.getByTestId("mind-canvas")).toHaveCSS("background-color", "rgb(242, 242, 242)");
   await page.getByTestId("add-note").click();
-  const parent = page.getByTestId("mind-node").filter({ hasText: "笔记 1" });
-  await expect(parent).toBeVisible();
+  const named = page.getByTestId("mind-node").filter({ hasText: "笔记 1" });
+  await expect(named).toBeVisible();
+  const parentId = await named.getAttribute("data-node-id");
+  if (!parentId) throw new Error("note id is missing");
+  const parent = page.locator(`[data-testid="mind-node"][data-node-id="${parentId}"]`);
   await parent.click();
   await expect(parent).toHaveAttribute("data-selected", "true");
   await expect(parent).toHaveCSS("outline-style", "dashed");

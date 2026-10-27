@@ -50,7 +50,7 @@ function asFlowNode(model: FlowNodeModel): MindNode {
     position: model.position,
     data: model.data,
     style: { width: model.type === "code" ? 280 : 240 },
-    dragHandle: model.type === "code" ? ".code-drag" : undefined,
+    dragHandle: model.type === "code" ? ".code-drag" : "[data-testid='note-drag']",
   };
 }
 
@@ -110,18 +110,26 @@ function CardChrome({
         <CardPopup nodeId={id} colorId={colorId} actions={actions} />
       ) : null}
       <div
-        data-testid={type === "code" ? undefined : "note-drag"}
-        className={`${type === "code" ? "code-drag" : ""} flex cursor-grab items-center justify-between gap-2 rounded-t-lg px-3 py-2`}
+        className="flex items-center gap-2 rounded-t-lg pr-2"
         style={{ background: titleBarColor(swatch.hex) }}
       >
-        <span className="truncate text-xs font-semibold">{title}</span>
+        <div
+          data-testid={type === "code" ? undefined : "note-drag"}
+          className={`${type === "code" ? "code-drag" : ""} min-w-0 flex-1 cursor-grab px-3 py-2`}
+        >
+          <span className="block truncate text-xs font-semibold">{title}</span>
+        </div>
         <button
           type="button"
           data-testid="node-collapse"
           data-card-control="true"
           aria-label={data.collapsed ? "展开" : "折叠"}
           className="nodrag nopan grid size-5 shrink-0 place-items-center rounded-full bg-white/80 text-xs font-semibold"
-          onClick={() => actions?.onCollapse(id)}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            actions?.onCollapse(id);
+          }}
         >
           {data.collapsed ? "+" : "−"}
         </button>

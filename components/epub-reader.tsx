@@ -317,7 +317,7 @@ export function EpubReader({
       data-testid="epub-reader"
       className={
         embedded
-          ? "flex h-full min-h-0 flex-col overflow-hidden bg-canvas text-[#1C1C1E]"
+          ? "flex h-full min-h-0 flex-col overflow-auto bg-canvas text-[#1C1C1E]"
           : "min-h-svh overflow-x-clip bg-canvas text-[#1C1C1E]"
       }
     >
@@ -386,7 +386,7 @@ export function EpubReader({
           <div
             ref={viewerRef}
             data-testid="epub-viewer"
-            className={embedded ? "min-h-64 w-full flex-1 overflow-hidden bg-white" : "h-[min(70dvh,40rem)] min-h-64 w-full max-w-full overflow-hidden bg-white"}
+            className="h-[min(70dvh,40rem)] min-h-64 w-full max-w-full overflow-hidden bg-white"
           />
         </div>
         <aside className={embedded ? "flex shrink-0 gap-2 overflow-x-auto border-t border-[#EFEFEF] bg-white px-3 py-2" : "min-w-0 space-y-3"}>
