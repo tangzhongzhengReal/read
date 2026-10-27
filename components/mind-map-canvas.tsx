@@ -277,7 +277,6 @@ function TextNode({ id, data, type, selected }: NodeProps<MindNode>) {
   const [mode, setMode] = useState<null | "title" | "body">(null);
   const [draft, setDraft] = useState("");
   const editingRef = useRef(false);
-  const cancelRef = useRef(false);
   const openedToken = useRef(0);
   const editorRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const isSelected = Boolean(selected);
@@ -286,7 +285,6 @@ function TextNode({ id, data, type, selected }: NodeProps<MindNode>) {
   useEffect(() => {
     if (!request || request.id !== id || openedToken.current === request.token) return;
     openedToken.current = request.token;
-    cancelRef.current = false;
     editingRef.current = true;
     setDraft(request.mode === "title" ? (data.title ?? "") : (data.text ?? ""));
     setMode(request.mode);
@@ -300,7 +298,6 @@ function TextNode({ id, data, type, selected }: NodeProps<MindNode>) {
       const target = event.target instanceof Element ? event.target : null;
       if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
       event.preventDefault();
-      cancelRef.current = false;
       editingRef.current = true;
       setDraft(data.title ?? "");
       setMode("title");
@@ -317,23 +314,13 @@ function TextNode({ id, data, type, selected }: NodeProps<MindNode>) {
   }, [mode]);
 
   function begin(next: "title" | "body") {
-    cancelRef.current = false;
     editingRef.current = true;
     setDraft(next === "title" ? (data.title ?? "") : (data.text ?? ""));
     setMode(next);
   }
 
-  function cancelEdit() {
-    cancelRef.current = true;
-    editingRef.current = false;
-    setMode(null);
-  }
-
   function commit(which: "title" | "body") {
-    if (!editingRef.current || cancelRef.current) {
-      cancelRef.current = false;
-      return;
-    }
+    if (!editingRef.current) return;
     editingRef.current = false;
     setMode(null);
     if (which === "title") {
@@ -369,13 +356,9 @@ function TextNode({ id, data, type, selected }: NodeProps<MindNode>) {
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => commit("title")}
         onKeyDown={(event) => {
-          if (event.key === "Escape") {
+          if (event.key === "Escape" || event.key === "Enter") {
             event.preventDefault();
             event.stopPropagation();
-            cancelEdit();
-          }
-          if (event.key === "Enter") {
-            event.preventDefault();
             commit("title");
           }
         }}
@@ -413,7 +396,7 @@ function TextNode({ id, data, type, selected }: NodeProps<MindNode>) {
                 if (event.key === "Escape") {
                   event.preventDefault();
                   event.stopPropagation();
-                  cancelEdit();
+                  commit("body");
                 }
                 if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
                   event.preventDefault();
