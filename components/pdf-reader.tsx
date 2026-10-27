@@ -9,6 +9,8 @@ import { ExcerptPopover, type PopoverAnchor } from "@/components/reader/excerpt-
 import type { OpenedExcerpt, ReaderEmbedProps } from "@/components/reader/embed";
 import { cardExtras, readCardFields } from "@/src/lib/excerpt/card";
 import { highlightPresentation, type HighlightMode } from "@/src/lib/excerpt/colors";
+import { useNodeColorSync } from "@/src/lib/excerpt/use-node-color";
+import { useNarrow } from "@/src/lib/study/use-narrow";
 import { pdfFitScale } from "@/src/lib/pdf/fit-scale";
 import { normalizeSelectionAnchor, type SelectionAnchor } from "@/src/lib/pdf/selection-anchor";
 import { locateFromAnchor } from "@/src/lib/study/link";
@@ -94,6 +96,8 @@ function PdfDocument({
   const [highlight, setHighlight] = useState<HighlightMode>("fill");
   const [draft, setDraft] = useState<SelectionDraft | null>(null);
   const [appliedLocate, setAppliedLocate] = useState(0);
+  const narrow = useNarrow();
+  useNodeColorSync(setExcerpts);
   const dismissPopover = useCallback(() => setDraft(null), []);
   if (locate && locate.token !== appliedLocate) {
     const target = locateFromAnchor(locate.anchor);
@@ -337,8 +341,8 @@ function PdfDocument({
       data-testid="pdf-reader"
       className={
         embedded
-          ? "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-canvas text-[#1C1C1E]"
-          : "min-h-svh overflow-x-clip bg-canvas text-[#1C1C1E]"
+          ? "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white text-[#1C1C1E]"
+          : "flex min-h-svh flex-col overflow-x-clip bg-white text-[#1C1C1E]"
       }
     >
       <header className={embedded ? "shrink-0 border-b border-[#EFEFEF] bg-white" : "px-4 pt-4"}>
@@ -384,15 +388,17 @@ function PdfDocument({
             >
               下一页
             </button>
-            <button
-              type="button"
-              data-testid="create-excerpt"
-              className="inline-flex min-h-11 items-center rounded-lg bg-[#4894F3] px-3 text-sm font-medium text-white"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => void createFromSelection()}
-            >
-              做成摘录
-            </button>
+            {narrow ? null : (
+              <button
+                type="button"
+                data-testid="create-excerpt"
+                className="inline-flex min-h-11 items-center rounded-lg bg-[#4894F3] px-3 text-sm font-medium text-white"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => void createFromSelection()}
+              >
+                做成摘录
+              </button>
+            )}
             </div>
           </div>
         </div>
@@ -484,6 +490,19 @@ function PdfDocument({
           )}
         </aside>
       </main>
+      {narrow ? (
+        <div className="shrink-0 px-3 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            data-testid="create-excerpt"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[#4894F3] px-3 text-sm font-medium text-white"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => void createFromSelection()}
+          >
+            做成摘录
+          </button>
+        </div>
+      ) : null}
       <ExcerptPopover
         anchor={draft}
         color={color}

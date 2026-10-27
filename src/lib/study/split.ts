@@ -3,7 +3,7 @@ export type CollapsedPane = "map" | "doc" | null;
 
 export const SPLIT_MIN = 22;
 export const SPLIT_MAX = 78;
-export const SPLIT_DEFAULT = 46;
+export const SPLIT_DEFAULT = 34;
 
 export function clampSplitRatio(ratio: number): number {
   if (!Number.isFinite(ratio)) return SPLIT_DEFAULT;

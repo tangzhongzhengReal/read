@@ -5,7 +5,7 @@ test("split ratio stays inside the draggable range", () => {
   expect(clampSplitRatio(10)).toBe(22);
   expect(clampSplitRatio(90)).toBe(78);
   expect(clampSplitRatio(46)).toBe(46);
-  expect(clampSplitRatio(Number.NaN)).toBe(46);
+  expect(clampSplitRatio(Number.NaN)).toBe(34);
 });
 
 test("pointer position becomes the mind-pane ratio", () => {
