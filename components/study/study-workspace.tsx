@@ -21,7 +21,7 @@ import {
   SPLIT_DEFAULT,
   type CollapsedPane,
 } from "@/src/lib/study/split";
-import { libraryPath, mapPath, reviewPath } from "@/src/lib/workspace";
+import { LOCAL_WORKSPACE_ID, libraryPath, mapPath, reviewPath } from "@/src/lib/workspace";
 
 const MindMapCanvas = dynamic(() => import("@/components/mind-map-canvas"), {
   ssr: false,
@@ -73,8 +73,9 @@ function useNarrow(): boolean {
   );
 }
 
-export function StudyWorkspace({ workspaceId }: { workspaceId: string }) {
+export function StudyWorkspace() {
   const params = useSearchParams();
+  const workspaceId = params.get("workspaceId") || LOCAL_WORKSPACE_ID;
   const frameRef = useRef<HTMLDivElement>(null);
   const focusSeq = useRef(0);
   const locateSeq = useRef(0);

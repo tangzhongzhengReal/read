@@ -42,7 +42,7 @@ test("library uses a sidebar and a cover grid with a blue import button", async 
   await expect(page.getByTestId("library-section-review")).toBeVisible();
   await expect(page.getByTestId("library-section-docs")).toContainText("分类");
   await expect(page.getByTestId("library-section-docs")).toContainText("本地文件夹");
-  await expect(page.getByTestId("open-study-set")).toHaveAttribute("href", "/w/local");
+  await expect(page.getByTestId("open-study-set")).toHaveAttribute("href", "/w");
 
   const importPdf = page.locator("label", { has: page.getByTestId("upload-pdf") });
   await expect(importPdf).toHaveCSS("background-color", "rgb(72, 148, 243)");
@@ -59,7 +59,7 @@ test("library uses a sidebar and a cover grid with a blue import button", async 
 });
 
 test("study workspace splits, drags, collapses, and stacks on a phone", async ({ page }) => {
-  await page.goto("/w/local");
+  await page.goto("/w");
   const workspace = page.getByTestId("study-workspace");
   await expect(workspace).toHaveAttribute("data-layout", "split");
   await expect(workspace).toHaveAttribute("data-link-mode", "both");

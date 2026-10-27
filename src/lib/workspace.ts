@@ -19,11 +19,10 @@ export function reviewPath(workspaceId: string): string {
 
 export function studyPath(workspaceId: string, documentId?: string): string {
   const params = new URLSearchParams();
+  if (workspaceId !== LOCAL_WORKSPACE_ID) params.set("workspaceId", workspaceId);
   if (documentId) params.set("doc", documentId);
   const query = params.toString();
-  return query
-    ? `/w/${encodeURIComponent(workspaceId)}?${query}`
-    : `/w/${encodeURIComponent(workspaceId)}`;
+  return query ? `/w?${query}` : "/w";
 }
 
 function workspacePath(pathname: string, workspaceId: string): string {
