@@ -3,6 +3,7 @@ import {
   CodeRunSchema,
   DocumentSchema,
   EdgeSchema,
+  ExcerptCreateSchema,
   NodeSchema,
   ReviewSchema,
   WorkspaceSchema,
@@ -103,6 +104,48 @@ test("edge and code run accept their stored shapes", () => {
       updatedAt: now,
     }).success,
   ).toBe(false);
+});
+
+test("excerpt cards keep color, tags, and title without breaking text-only payloads", () => {
+  expect(
+    ExcerptCreateSchema.parse({
+      workspaceId: "ws",
+      documentId: "doc",
+      type: "excerpt",
+      payload: { text: "quoted" },
+      anchor: { page: 1, rects: [{ x: 0, y: 0, width: 0.2, height: 0.1 }] },
+    }).payload,
+  ).toEqual({ text: "quoted" });
+
+  expect(
+    ExcerptCreateSchema.parse({
+      workspaceId: "ws",
+      documentId: "doc",
+      type: "excerpt",
+      payload: {
+        text: "quoted",
+        title: "标题",
+        comment: "评论",
+        color: 3,
+        tags: ["定义"],
+        highlight: "underline",
+        asTitle: true,
+      },
+      anchor: { cfi: "epubcfi(/6/2)" },
+    }).payload,
+  ).toMatchObject({ color: 3, tags: ["定义"], asTitle: true, highlight: "underline" });
+
+  expect(
+    EdgeSchema.parse({
+      id: "e",
+      workspaceId: "ws",
+      fromNodeId: "a",
+      toNodeId: "b",
+      kind: "child",
+      createdAt: now,
+      updatedAt: now,
+    }).kind,
+  ).toBe("child");
 });
 
 test("review stores a due time and a simple interval", () => {

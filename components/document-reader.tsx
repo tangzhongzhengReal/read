@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { EpubReader } from "@/components/epub-reader";
 import { PdfReader } from "@/components/pdf-reader";
+import type { ReaderEmbedProps } from "@/components/reader/embed";
 import { prefetchEpubRuntime } from "@/src/lib/epub/runtime";
 import { LOCAL_WORKSPACE_ID } from "@/src/lib/workspace";
 
@@ -12,10 +13,10 @@ if (typeof window !== "undefined") {
   void prefetchEpubRuntime();
 }
 
-export function DocumentReader() {
+export function DocumentReader(props: ReaderEmbedProps = {}) {
   const params = useSearchParams();
-  const documentId = params.get("documentId");
-  const workspaceId = params.get("workspaceId") ?? LOCAL_WORKSPACE_ID;
+  const documentId = props.documentId ?? params.get("documentId");
+  const workspaceId = props.workspaceId ?? params.get("workspaceId") ?? LOCAL_WORKSPACE_ID;
   const [mediaType, setMediaType] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +51,7 @@ export function DocumentReader() {
     return (
       <main className="mx-auto max-w-5xl px-6 py-10">
         <p>缺少文档。</p>
-        <Link className="text-sm underline" href="/">
+        <Link className="text-sm text-brand" href="/">
           返回文库
         </Link>
       </main>
@@ -61,16 +62,18 @@ export function DocumentReader() {
     return (
       <main className="mx-auto max-w-5xl px-6 py-10">
         <p role="alert">{error}</p>
-        <Link className="text-sm underline" href="/">
+        <Link className="text-sm text-brand" href="/">
           返回文库
         </Link>
       </main>
     );
   }
 
-  if (mediaType === "pdf") return <PdfReader />;
-  if (mediaType === "epub") {
-    return <EpubReader documentId={documentId} workspaceId={workspaceId} />;
+  if (mediaType === "pdf") {
+    return <PdfReader {...props} documentId={documentId} workspaceId={workspaceId} />;
   }
-  return <p className="px-6 py-10">正在打开文档…</p>;
+  if (mediaType === "epub") {
+    return <EpubReader {...props} documentId={documentId} workspaceId={workspaceId} />;
+  }
+  return <p className="px-6 py-10 text-sm text-[#8E8E93]">正在打开文档…</p>;
 }

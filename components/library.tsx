@@ -3,20 +3,16 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { LOCAL_WORKSPACE_ID, mapPath, readerPath, reviewPath } from "@/src/lib/workspace";
+import { BookOpen, Folder, Library as LibraryIcon, Plus, RotateCcw } from "lucide-react";
+import { LogoutButton } from "@/components/logout-button";
+import { LOCAL_WORKSPACE_ID, mapPath, reviewPath, studyPath } from "@/src/lib/workspace";
 
 type LibraryDocument = {
   id: string;
   workspaceId: string;
   title: string;
   mediaType: string;
+  meta?: { pages?: number };
 };
 
 type WorkspaceRecord = {
@@ -33,6 +29,7 @@ export function Library() {
   const [draftName, setDraftName] = useState("");
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [section, setSection] = useState<"sets" | "docs">("docs");
 
   useEffect(() => {
     let cancelled = false;
@@ -90,132 +87,221 @@ export function Library() {
       return;
     }
     const body = (await response.json()) as { document: { id: string; workspaceId: string } };
-    window.location.assign(readerPath(body.document.id, body.document.workspaceId));
+    window.location.assign(studyPath(body.document.workspaceId, body.document.id));
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <p data-testid="workspace-title" className="text-sm font-medium">
-          {workspaceName}
-        </p>
-        <p data-testid="workspace-id" className="text-xs text-muted-foreground">
-          {workspaceId}
-        </p>
-      </div>
-      <form
-        className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void createWorkspace();
-        }}
-      >
-        <input
-          data-testid="workspace-name"
-          className="min-h-11 w-full rounded-lg border border-border bg-background px-3 text-base sm:w-auto sm:min-w-40 sm:text-sm"
-          value={draftName}
-          placeholder="工作区名称"
-          onChange={(event) => setDraftName(event.target.value)}
-        />
-        <button
-          type="submit"
-          data-testid="create-workspace"
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-3 text-sm font-medium"
-        >
-          新建工作区
-        </button>
-      </form>
-      {workspaces.length > 0 ? (
-        <ul className="flex flex-wrap gap-2" data-testid="workspace-list">
-          {workspaces.map((workspace) => (
-            <li key={workspace.id}>
-              <Link
-                data-testid="workspace-link"
-                className="text-sm underline"
-                href={`/?workspaceId=${encodeURIComponent(workspace.id)}`}
+    <div className="flex min-h-svh flex-col bg-canvas text-[#1C1C1E] md:flex-row">
+      <aside data-testid="library-sidebar" className="flex w-full shrink-0 flex-col bg-surface md:min-h-svh md:w-60">
+        <div className="flex items-center gap-2 px-4 py-4">
+          <div className="grid size-8 place-items-center rounded-lg bg-brand text-sm font-semibold text-white">R</div>
+          <h1 className="text-lg leading-none font-semibold tracking-tight">Read</h1>
+        </div>
+        <div className="px-4 pb-3">
+          <p data-testid="workspace-title" className="truncate text-sm font-medium">
+            {workspaceName}
+          </p>
+          <p data-testid="workspace-id" className="truncate text-xs text-[#9A9A9A]">
+            {workspaceId}
+          </p>
+        </div>
+        <nav className="flex flex-1 flex-col gap-5 px-3 pb-4 text-sm">
+          <section data-testid="library-section-study">
+            <p className="px-2 pb-1 text-xs text-[#9A9A9A]">学习集</p>
+            <button
+              type="button"
+              className={`flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left ${section === "sets" ? "bg-surface-sel text-[#2F6FEB]" : "text-[#1C1C1E]"}`}
+              onClick={() => setSection("sets")}
+            >
+              <LibraryIcon className="size-4 text-icon" strokeWidth={1.75} />
+              学习集库
+            </button>
+            <Link
+              data-testid="open-study-set"
+              href={studyPath(workspaceId)}
+              className="flex min-h-10 items-center gap-2 rounded-lg px-2"
+            >
+              <BookOpen className="size-4 text-icon" strokeWidth={1.75} />
+              进入学习集
+            </Link>
+            <Link data-testid="open-mind-map" href={mapPath(workspaceId)} className="flex min-h-10 items-center gap-2 rounded-lg px-2">
+              脑图
+            </Link>
+            <form
+              className="mt-2 flex flex-col gap-2 px-1"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void createWorkspace();
+              }}
+            >
+              <input
+                data-testid="workspace-name"
+                className="min-h-11 w-full rounded-lg border border-[#E6E6E6] bg-white px-3 text-base md:text-sm"
+                value={draftName}
+                placeholder="工作区名称"
+                onChange={(event) => setDraftName(event.target.value)}
+              />
+              <button
+                type="submit"
+                data-testid="create-workspace"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#E6E6E6] bg-white px-3 text-sm font-medium"
               >
-                {workspace.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <div className="flex flex-wrap gap-3">
-        <Link
-          data-testid="open-mind-map"
-          className="inline-flex min-h-11 items-center rounded-lg border border-border bg-background px-3 text-sm font-medium"
-          href={mapPath(workspaceId)}
-        >
-          脑图
-        </Link>
-        <Link
-          data-testid="open-review"
-          className="inline-flex min-h-11 items-center rounded-lg border border-border bg-background px-3 text-sm font-medium"
-          href={reviewPath(workspaceId)}
-        >
-          复习
-        </Link>
-        <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground">
-          导入 PDF
-          <input
-            data-testid="upload-pdf"
-            className="sr-only"
-            type="file"
-            accept="application/pdf,.pdf"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) void onFile(file);
-            }}
-          />
-        </label>
-        <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground">
-          导入 EPUB
-          <input
-            data-testid="upload-epub"
-            className="sr-only"
-            type="file"
-            accept="application/epub+zip,.epub"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) void onFile(file);
-            }}
-          />
-        </label>
+                新建工作区
+              </button>
+            </form>
+            {workspaces.length > 0 ? (
+              <ul className="mt-2 flex flex-col gap-1" data-testid="workspace-list">
+                {workspaces.map((workspace) => {
+                  const selected = workspace.id === workspaceId;
+                  return (
+                    <li key={workspace.id}>
+                      <Link
+                        data-testid="workspace-link"
+                        className={`block rounded-lg px-2 py-2 ${selected ? "bg-surface-sel text-[#2F6FEB]" : ""}`}
+                        href={`/?workspaceId=${encodeURIComponent(workspace.id)}`}
+                      >
+                        {workspace.name}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </section>
+          <section data-testid="library-section-docs">
+            <p className="px-2 pb-1 text-xs text-[#9A9A9A]">文档</p>
+            <button
+              type="button"
+              className={`flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left ${section === "docs" ? "bg-surface-sel text-[#2F6FEB]" : ""}`}
+              onClick={() => setSection("docs")}
+            >
+              分类
+            </button>
+            <p className="mt-1 flex items-center gap-2 px-2 py-2 text-[#67707D]">
+              <Folder className="size-4" strokeWidth={1.75} />
+              文件夹
+            </p>
+            <p className="rounded-lg bg-surface-sel px-2 py-2 text-[#2F6FEB]">本地文件夹</p>
+          </section>
+          <section data-testid="library-section-review">
+            <p className="px-2 pb-1 text-xs text-[#9A9A9A]">复习</p>
+            <Link data-testid="open-review" href={reviewPath(workspaceId)} className="flex min-h-10 items-center gap-2 rounded-lg px-2">
+              <RotateCcw className="size-4 text-icon" strokeWidth={1.75} />
+              复习卡片组
+            </Link>
+          </section>
+        </nav>
+        <div className="border-t border-[#EFEFEF] px-3 py-3">
+          <LogoutButton />
+        </div>
+      </aside>
+      <main className="min-w-0 flex-1 px-4 py-5 sm:px-8">
+        <h2 className="text-center text-base font-medium">{section === "sets" ? "学习集" : "文档"}</h2>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-[#8E8E93]">{section === "sets" ? "学习集库" : "全部"}</p>
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg bg-[#4894F3] px-3 text-sm font-medium text-white shadow-sm">
+              <Plus className="size-4" strokeWidth={2} />
+              导入 PDF
+              <input
+                data-testid="upload-pdf"
+                className="sr-only"
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) void onFile(file);
+                }}
+              />
+            </label>
+            <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-[#4894F3] px-3 text-sm font-medium text-white shadow-sm">
+              导入 EPUB
+              <input
+                data-testid="upload-epub"
+                className="sr-only"
+                type="file"
+                accept="application/epub+zip,.epub"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) void onFile(file);
+                }}
+              />
+            </label>
+          </div>
+        </div>
         {error ? (
           <p role="alert" className="mt-3 text-sm text-destructive">
             {error}
           </p>
         ) : null}
-      </div>
-      {documents.length === 0 ? (
-        <Card data-testid="library-empty">
-          <CardHeader>
-            <CardTitle>还没有文档</CardTitle>
-            <CardDescription>
-              导入 PDF 或 EPUB 后，可以在这里阅读、摘录，并回到原文。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">文库是空的。</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <ul className="grid gap-3" data-testid="library-list">
-          {documents.map((document) => (
-            <li key={document.id}>
-              <Link
-                data-testid="document-card"
-                className="block min-h-11 rounded-xl bg-card px-4 py-3 text-sm break-words ring-1 ring-foreground/10"
-                href={readerPath(document.id, document.workspaceId)}
-              >
-                {document.title}
+        {section === "sets" ? (
+          <ul data-testid="library-grid" className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4">
+            <li>
+              <Link href={studyPath(workspaceId)} className="block rounded-xl bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.12)]">
+                <div className="flex aspect-[3/4] items-end rounded-md bg-gradient-to-b from-[#7EB6F6] to-[#4894F3] p-3 text-sm font-semibold text-white">
+                  {workspaceName}
+                </div>
+                <p className="mt-2 text-center text-sm">{workspaceName}</p>
               </Link>
             </li>
-          ))}
-        </ul>
-      )}
+          </ul>
+        ) : documents.length === 0 ? (
+          <div data-testid="library-empty" className="mx-auto mt-10 max-w-md rounded-2xl bg-white px-6 py-8 text-center shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+            <p className="text-base font-medium">还没有文档</p>
+            <p className="mt-2 text-sm text-[#8E8E93]">导入 PDF 或 EPUB 后，可以在这里阅读、摘录，并回到原文。</p>
+          </div>
+        ) : (
+          <ul
+            data-testid="library-list"
+            className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4"
+          >
+            {documents.map((document) => {
+              const pdf = document.mediaType !== "epub";
+              return (
+                <li key={document.id} className="relative">
+                  <Link
+                    data-testid="document-card"
+                    href={studyPath(document.workspaceId, document.id)}
+                    className="block rounded-xl bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
+                  >
+                    <div
+                      className={`relative aspect-[3/4] overflow-hidden rounded-md ${pdf ? "bg-gradient-to-b from-[#3CB58A] to-[#0E6B49]" : "bg-gradient-to-b from-[#4C5563] to-[#1C2430]"}`}
+                    >
+                      <span
+                        data-testid="doc-badge"
+                        className={`absolute top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-semibold text-white ${pdf ? "bg-[#E5484D]" : "bg-[#7A5AF8]"}`}
+                      >
+                        {pdf ? "PDF" : "EPUB"}
+                      </span>
+                      {typeof document.meta?.pages === "number" ? (
+                        <span className="absolute top-2 right-2 text-[11px] text-white/80">{document.meta.pages}</span>
+                      ) : null}
+                      <p className="absolute inset-x-3 bottom-4 text-center text-sm leading-snug font-semibold text-white">
+                        {document.title}
+                      </p>
+                    </div>
+                    <p className="mt-2 truncate text-center text-sm">{document.title}</p>
+                  </Link>
+                  <button
+                    type="button"
+                    data-testid="doc-menu"
+                    aria-label={`${document.title} 更多`}
+                    className="absolute right-4 bottom-3 grid size-8 place-items-center rounded-full text-sm text-[#8E8E93]"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      window.location.assign(studyPath(document.workspaceId, document.id));
+                    }}
+                  >
+                    ···
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </main>
     </div>
   );
 }

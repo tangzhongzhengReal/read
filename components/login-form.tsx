@@ -33,8 +33,9 @@ export function LoginForm() {
   }
 
   return (
-    <div data-testid="login-page" className="min-h-svh bg-background text-foreground">
+    <div data-testid="login-page" className="min-h-svh bg-canvas text-[#1C1C1E]">
       <main className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center gap-6 px-4 py-10">
+        <div className="flex flex-col gap-6 rounded-2xl bg-white px-6 py-8 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
         <div>
           <p className="text-xs tracking-wide text-muted-foreground">Read</p>
           <h1 className="text-2xl font-semibold">登录</h1>
@@ -68,6 +69,7 @@ export function LoginForm() {
             进入
           </button>
         </form>
+        </div>
       </main>
     </div>
   );

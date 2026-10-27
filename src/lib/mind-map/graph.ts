@@ -1,9 +1,20 @@
+import { readCardFields } from "@/src/lib/excerpt/card";
+import type { HighlightMode } from "@/src/lib/excerpt/colors";
 import type { Edge, Node } from "@/src/lib/models";
 
 export type FlowNodeData = {
   text?: string;
+  title?: string;
+  comment?: string;
   language?: string;
   source?: string;
+  color?: number;
+  tags?: string[];
+  highlight?: HighlightMode;
+  collapsed?: boolean;
+  asTitle?: boolean;
+  anchor?: Record<string, unknown>;
+  documentId?: string;
   x: number;
   y: number;
   nodeType: Node["type"];
@@ -34,14 +45,24 @@ export function fallbackPosition(index: number): { x: number; y: number } {
 export function toFlowNodes(nodes: Node[]): FlowNodeModel[] {
   return nodes.map((node, index) => {
     const position = node.position ?? fallbackPosition(index);
+    const card = readCardFields(node.payload);
     return {
       id: node.id,
       type: node.type,
       position,
       data: {
-        text: typeof node.payload.text === "string" ? node.payload.text : undefined,
+        text: card.text || undefined,
+        title: card.title,
+        comment: card.comment,
         language: typeof node.payload.language === "string" ? node.payload.language : undefined,
         source: typeof node.payload.source === "string" ? node.payload.source : undefined,
+        color: card.color,
+        tags: card.tags,
+        highlight: card.highlight,
+        collapsed: card.collapsed,
+        asTitle: card.asTitle,
+        anchor: node.anchor,
+        documentId: node.documentId,
         x: position.x,
         y: position.y,
         nodeType: node.type,
