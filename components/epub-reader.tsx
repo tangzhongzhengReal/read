@@ -317,7 +317,7 @@ export function EpubReader({
       data-testid="epub-reader"
       className={
         embedded
-          ? "flex h-full min-h-0 flex-col overflow-auto bg-canvas text-[#1C1C1E]"
+          ? "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-canvas text-[#1C1C1E]"
           : "min-h-svh overflow-x-clip bg-canvas text-[#1C1C1E]"
       }
     >
@@ -339,10 +339,11 @@ export function EpubReader({
               <LogoutButton />
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="min-w-0 flex-1 truncate text-base font-semibold" data-testid="reader-title">
+          <div className="flex min-w-0 flex-col gap-2">
+            <h1 className="truncate text-base font-semibold" data-testid="reader-title">
               {title}
             </h1>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
             <button
               type="button"
               className="inline-flex min-h-11 items-center rounded-lg border border-[#E6E6E6] bg-white px-3 text-sm"
@@ -368,10 +369,11 @@ export function EpubReader({
             >
               做成摘录
             </button>
+            </div>
           </div>
         </div>
       </header>
-      <main className={embedded ? "flex min-h-0 flex-1 flex-col" : "mx-auto grid max-w-7xl gap-6 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_16rem]"}>
+      <main className={embedded ? "flex min-h-0 min-w-0 flex-1 flex-col" : "mx-auto grid min-w-0 max-w-7xl gap-6 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_16rem]"}>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {error ? (
             <p role="alert" data-testid="reader-error" className="mb-4 text-sm text-destructive">
@@ -386,15 +388,15 @@ export function EpubReader({
           <div
             ref={viewerRef}
             data-testid="epub-viewer"
-            className="h-[min(70dvh,40rem)] min-h-64 w-full max-w-full overflow-hidden bg-white"
+            className={embedded ? "h-full min-h-48 w-full max-w-full flex-1 overflow-hidden bg-white" : "h-[min(70dvh,40rem)] min-h-64 w-full max-w-full overflow-hidden bg-white"}
           />
         </div>
-        <aside className={embedded ? "flex shrink-0 gap-2 overflow-x-auto border-t border-[#EFEFEF] bg-white px-3 py-2" : "min-w-0 space-y-3"}>
+        <aside className={embedded ? "max-h-36 min-h-0 w-full min-w-0 shrink-0 overflow-x-hidden overflow-y-auto border-t border-[#EFEFEF] bg-white" : "min-w-0 space-y-3"}>
           {embedded ? null : <h2 className="text-sm font-medium">摘录</h2>}
           {excerpts.length === 0 ? (
-            <p className="text-sm text-[#8E8E93]">选中文字后做成摘录。</p>
+            <p className="px-3 py-2 text-sm text-[#8E8E93]">选中文字后做成摘录。</p>
           ) : (
-            <ul className={embedded ? "flex gap-2" : "space-y-2"}>
+            <ul className={embedded ? "flex flex-col gap-2 p-2" : "space-y-2"}>
               {excerpts.map((node) => {
                 const fields = readCardFields(node.payload);
                 const presentation = highlightPresentation({
@@ -403,7 +405,7 @@ export function EpubReader({
                   asTitle: fields.asTitle,
                 });
                 return (
-                  <li key={node.id} className={embedded ? "w-48 shrink-0" : undefined}>
+                  <li key={node.id} className="min-w-0">
                     <button
                       type="button"
                       data-testid="excerpt-card"

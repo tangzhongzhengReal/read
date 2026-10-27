@@ -1,6 +1,16 @@
 "use client";
 
-import { useCallback, useContext, useEffect, useState, createContext, type ReactNode } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  createContext,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import {
   Handle,
   Position,
@@ -37,6 +47,8 @@ type CardActions = {
   onDelete: (id: string) => void;
   onAddChild: (id: string) => void;
   onAddSibling: (id: string) => void;
+  onEdit: (id: string, patch: { text?: string; title?: string }) => void;
+  saveNotice: { id: string; label: string } | null;
 };
 
 const WorkspaceContext = createContext("local");
@@ -82,12 +94,18 @@ function CardChrome({
   type,
   selected,
   children,
+  titleNode,
+  onTitleDoubleClick,
+  saveLabel,
 }: {
   id: string;
   data: MindData;
   type: string | undefined;
   selected: boolean;
   children: ReactNode;
+  titleNode?: ReactNode;
+  onTitleDoubleClick?: () => void;
+  saveLabel?: string | null;
 }) {
   const actions = useContext(CardContext);
   const colorId = data.color ?? (type === "excerpt" ? 1 : type === "code" ? 14 : 3);
@@ -117,7 +135,19 @@ function CardChrome({
           data-testid={type === "code" ? undefined : "note-drag"}
           className={`${type === "code" ? "code-drag" : ""} min-w-0 flex-1 cursor-grab px-3 py-2`}
         >
-          <span className="block truncate text-xs font-semibold">{title}</span>
+          {titleNode ?? (
+            <span
+              data-testid="note-title"
+              className="block truncate text-xs font-semibold"
+              title="双击编辑标题"
+              onDoubleClick={(event) => {
+                event.stopPropagation();
+                onTitleDoubleClick?.();
+              }}
+            >
+              {title}
+            </span>
+          )}
         </div>
         <button
           type="button"
@@ -135,6 +165,11 @@ function CardChrome({
         </button>
       </div>
       {data.collapsed ? null : children}
+      {saveLabel ? (
+        <p data-testid="note-save-status" aria-live="polite" className="px-3 pb-2 text-[11px] text-[#8E8E93]">
+          {saveLabel}
+        </p>
+      ) : null}
       <Handle type="target" position={Position.Left} data-testid="node-target" className="!size-4 !border-2 !bg-white" />
       <Handle type="source" position={Position.Right} data-testid="node-source" className="!size-4 !border-2 !bg-[#4894F3]" />
     </div>
@@ -209,10 +244,152 @@ function CardPopup({
 }
 
 function TextNode({ id, data, type, selected }: NodeProps<MindNode>) {
+  const actions = useContext(CardContext);
+  const [mode, setMode] = useState<null | "title" | "body">(null);
+  const [draft, setDraft] = useState("");
+  const editingRef = useRef(false);
+  const cancelRef = useRef(false);
+  const isSelected = Boolean(selected);
+
+  useEffect(() => {
+    if (!isSelected || mode) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "F2") return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+      cancelRef.current = false;
+      editingRef.current = true;
+      setDraft(data.text ?? "");
+      setMode("body");
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [data.text, isSelected, mode]);
+
+  function begin(next: "title" | "body") {
+    cancelRef.current = false;
+    editingRef.current = true;
+    setDraft(next === "title" ? (data.title ?? "") : (data.text ?? ""));
+    setMode(next);
+  }
+
+  function cancelEdit() {
+    cancelRef.current = true;
+    editingRef.current = false;
+    setMode(null);
+  }
+
+  function commit(which: "title" | "body") {
+    if (!editingRef.current || cancelRef.current) {
+      cancelRef.current = false;
+      return;
+    }
+    editingRef.current = false;
+    setMode(null);
+    if (which === "title") {
+      const title = draft.trim().slice(0, 250);
+      if (title === (data.title ?? "")) return;
+      actions?.onEdit(id, { title });
+      return;
+    }
+    const text = draft.trim();
+    if (!text || text === (data.text ?? "")) return;
+    actions?.onEdit(id, { text });
+  }
+
+  const editorStop = {
+    onPointerDown: (event: ReactPointerEvent) => event.stopPropagation(),
+    onMouseDown: (event: ReactMouseEvent) => event.stopPropagation(),
+  };
+
+  const titleEditor =
+    mode === "title" ? (
+      <input
+        data-testid="note-title-editor"
+        data-card-control="true"
+        className="nodrag nopan nowheel w-full rounded border border-[#4894F3] bg-white px-1 py-0.5 text-xs font-semibold text-[#1C1C1E] outline-none"
+        value={draft}
+        autoFocus
+        placeholder="标题"
+        aria-label="标题"
+        {...editorStop}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => commit("title")}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            cancelEdit();
+          }
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit("title");
+          }
+        }}
+      />
+    ) : undefined;
+
   return (
-    <CardChrome id={id} data={data} type={type} selected={Boolean(selected)}>
+    <CardChrome
+      id={id}
+      data={data}
+      type={type}
+      selected={isSelected}
+      titleNode={titleEditor}
+      onTitleDoubleClick={() => begin("title")}
+      saveLabel={actions?.saveNotice?.id === id ? actions.saveNotice.label : null}
+    >
       <div className="px-3 py-2">
-        <p className="pointer-events-none whitespace-pre-wrap">{data.text}</p>
+        {mode === "body" ? (
+          <div className="flex flex-col gap-1">
+            <textarea
+              data-testid="note-editor"
+              data-card-control="true"
+              className="nodrag nopan nowheel h-24 w-full resize-none rounded border border-[#4894F3] bg-white p-1 text-sm outline-none"
+              value={draft}
+              autoFocus
+              placeholder="正文"
+              aria-label="正文"
+              {...editorStop}
+              onChange={(event) => setDraft(event.target.value)}
+              onBlur={() => commit("body")}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  cancelEdit();
+                }
+                if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                  event.preventDefault();
+                  commit("body");
+                }
+              }}
+            />
+            <button
+              type="button"
+              data-testid="note-save"
+              data-card-control="true"
+              className="nodrag nopan ml-auto inline-flex min-h-11 items-center rounded-lg bg-[#4894F3] px-3 text-xs font-medium text-white"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => commit("body")}
+            >
+              保存
+            </button>
+          </div>
+        ) : (
+          <p
+            data-testid="note-body"
+            className="cursor-text whitespace-pre-wrap"
+            title="双击编辑正文，或选中后按 F2"
+            onDoubleClick={(event) => {
+              event.stopPropagation();
+              begin("body");
+            }}
+          >
+            {data.text}
+          </p>
+        )}
         {data.comment ? (
           <p data-testid="node-comment" className="mt-1 text-xs text-[#8E8E93]">
             {data.comment}
@@ -388,6 +565,7 @@ export default function MindMapCanvas({
   const [error, setError] = useState<string | null>(null);
   const [mapState, setMapState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<{ id: string; label: string } | null>(null);
   const [appliedFocus, setAppliedFocus] = useState(0);
   if (
     focusToken !== 0 &&
@@ -428,22 +606,29 @@ export default function MindMapCanvas({
     setNodes((current) => applyNodeChanges(changes, current));
   }, []);
 
-  async function patchNode(id: string, patch: Partial<MindData>) {
+  async function patchNode(id: string, patch: Partial<MindData>, announce = false) {
     const current = nodes.find((node) => node.id === id);
     if (!current) return;
     const nextData = { ...current.data, ...patch };
+    if ("title" in patch) {
+      const title = typeof patch.title === "string" ? patch.title.trim().slice(0, 250) : "";
+      nextData.title = title || undefined;
+    }
     setMapState("saving");
+    if (announce) setSaveNotice({ id, label: "保存中…" });
     const response = await fetch(`/api/nodes/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ workspaceId, payload: payloadFrom(current.data, patch) }),
+      body: JSON.stringify({ workspaceId, payload: payloadFrom(current.data, nextData) }),
     });
     if (!response.ok) {
       setMapState("error");
+      if (announce) setSaveNotice({ id, label: "保存失败" });
       return;
     }
     setNodes((items) => items.map((item) => (item.id === id ? { ...item, data: nextData } : item)));
     setMapState("saved");
+    if (announce) setSaveNotice({ id, label: "已保存" });
   }
 
   async function addNode(type: "note" | "code") {
@@ -644,6 +829,8 @@ export default function MindMapCanvas({
     onDelete: (id) => void deleteNode(id),
     onAddChild: (id) => void addRelative(id, "child"),
     onAddSibling: (id) => void addRelative(id, "sibling"),
+    onEdit: (id, patch) => void patchNode(id, patch, true),
+    saveNotice,
   };
 
   if (error) {
@@ -682,7 +869,7 @@ export default function MindMapCanvas({
             </p>
           </div>
           <div
-            className={`w-full max-w-full touch-none overflow-hidden bg-[#F2F2F2] ${fill ? "min-h-80 flex-1" : "h-[min(70dvh,640px)] min-h-80 rounded-xl"}`}
+            className={`relative w-full max-w-full touch-none overflow-hidden bg-[#F2F2F2] ${fill ? "min-h-0 flex-1" : "h-[min(70dvh,640px)] min-h-80 rounded-xl"}`}
             data-testid="mind-canvas"
           >
             <ReactFlow

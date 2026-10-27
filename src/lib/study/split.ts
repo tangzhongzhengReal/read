@@ -24,6 +24,16 @@ export function paneHidden(collapsed: CollapsedPane, pane: "map" | "doc"): boole
   return collapsed === pane;
 }
 
+/** Collapse a pane, or restore it when that pane is already the one hidden. */
+export function togglePane(current: CollapsedPane, pane: "map" | "doc"): CollapsedPane {
+  return current === pane ? null : pane;
+}
+
+export function paneToggleLabel(collapsed: CollapsedPane, pane: "map" | "doc"): string {
+  const name = pane === "map" ? "脑图" : "文档";
+  return collapsed === pane ? `展开${name}` : `收起${name}`;
+}
+
 export function layoutForWidth(width: number): SplitLayout {
   return width < 768 ? "stack" : "split";
 }
